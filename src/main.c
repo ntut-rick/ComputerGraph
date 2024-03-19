@@ -9,6 +9,9 @@
 #include "stb_image.h"
 #include "pryamid.h"
 
+#define IMPL_TRANSFORM_YOURSELF
+#include "myglTransfrom.h"
+
 void ChangeSize(int, int);
 void RenderScene(void);
 void MenuCallback(int);
@@ -21,6 +24,10 @@ float zangle = 0;
 float xtrans = 0;
 float ydelta = .2f;
 float xdelta = .2f;
+
+float xscale = 1;
+float yscale = 1;
+float zscale = 1;
 
 void Loop() {
   // yangle += ydelta;
@@ -52,6 +59,9 @@ void NormalKeyHandler (unsigned char key, int x, int y)
        
        case 'f': xtrans += 10.0f; break;
        case 'g': xtrans -= 10.0f; break;
+
+       case 'o': xscale += 10.0f; break;
+       case 'i': xscale -= 10.0f; break;
        case 'r':
        zangle = 0;
        yangle = 45;
@@ -136,6 +146,7 @@ void RenderScene(void) {
     1, 1, 0);
   glShadeModel(glShadeType);
 
+  // xyz-axes
   glBegin(GL_LINES);
     glVertex3f(100,0,0);
     glVertex3f(-100,0,0);
@@ -149,10 +160,13 @@ void RenderScene(void) {
     glVertex3f(0,0,100);
   glEnd();
 
+  // transformation
   glRotatef(yangle,0,1,0);
   glRotatef(xangle,1,0,0);
   glRotatef(zangle,0,0,1);
   glTranslatef(xtrans,0,0);
+  glScalef(xscale, yscale, zscale);
+
   glBegin(GL_TRIANGLES);
     // glColor3f(1,1,0);
     glTexCoord2f(0.5f, 0.0f); glVertex3fv(PRYAMID_POINTS[0]);
