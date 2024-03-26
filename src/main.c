@@ -29,11 +29,12 @@ float xscale = 1;
 float yscale = 1;
 float zscale = 1;
 
-struct mc_t {
-  float x,y,z;
+struct cood_t {
+  float x,y;
 };
 
-struct mc_t mc = {0,0,0};
+struct cood_t mc = {0,0};
+// struct cood_t win = {400,400};
 
 void Loop() {
   // yangle += ydelta;
@@ -56,12 +57,8 @@ void NormalKeyHandler (unsigned char key, int x, int y)
 {
     switch (key) 
     {    
-       case 'd': yangle += 10.0f; break;
-       case 'a': yangle -= 10.0f; break;
-       case 'w': xangle += 10.0f; break;
-       case 's': xangle -= 10.0f; break;
-       case 'q': zangle += 10.0f; break;
-       case 'e': zangle -= 10.0f; break;
+       case 'q': zangle += .1f; break;
+       case 'e': zangle -= .1f; break;
        
        case 'f': xtrans += 10.0f; break;
        case 'g': xtrans -= 10.0f; break;
@@ -78,42 +75,25 @@ void NormalKeyHandler (unsigned char key, int x, int y)
 }
 
 void mouseClick(int button, int state, int x, int y) {
-    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-        GLint viewport[4];
-        GLdouble modelview[16];
-        GLdouble projection[16];
-        GLfloat winX, winY, winZ;
-        GLdouble posX, posY, posZ;
+  if (button != GLUT_LEFT_BUTTON) {
+    return;
+  }
+  printf("mouse: %d %d\n", x, y);
 
-        glGetDoublev(GL_MODELVIEW_MATRIX, modelview);
-        glGetDoublev(GL_PROJECTION_MATRIX, projection);
-        glGetIntegerv(GL_VIEWPORT, viewport);
+  GLint viewport[4];
+  glGetIntegerv(GL_VIEWPORT, viewport);
+  
+  GLint h = viewport[3];
+  GLint w = viewport[2];
 
-        // windows' origin is left top.
-        winX = x;
-        winY = y; // OpenGL's 0 is at the bottom, so we need to invert mouseY
-        winZ = 0; // Assume we're working on a 2D plane, so we set winZ to 0 (the near plane)
-
-        // Use gluUnProject to map the screen position to world coordinates
-        gluUnProject(
-          winX, winY, winZ,
-          modelview, projection, viewport,
-          &posX, &posY, &posZ);
-
-        printf("Windo coords: %f, %f\n", winX, winY);
-        printf("World coords at z=0: %f, %f, %f\n", posX, posY, posZ);
-        mc.x = (float)x / 400 - 1;
-        mc.y = -(float)y / 400 + 1;
-        // mc.x = posX;
-        // mc.y = posY;
-        mc.z = 0;
-    }
+  mc.x = ((float)x / w)*2-1;
+  mc.y = ((float)y / h)*-2+1;
 }
 
 int main(int argc, char **argv) {
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-  glutInitWindowSize(800, 800);
+  glutInitWindowSize(400, 400);
   glutInitWindowPosition(600, 80);
   glutCreateWindow("Simple Triangle");
 
@@ -129,6 +109,7 @@ int main(int argc, char **argv) {
   glutReshapeFunc(ChangeSize);
   glutDisplayFunc(RenderScene);
   glutIdleFunc(Loop);
+
   glutMainLoop(); // http://www.programmer-club.com.tw/ShowSameTitleN/opengl/2288.html
   return 0;
 }
@@ -207,17 +188,26 @@ void RenderScene(void) {
   // rotation vector
   glBegin(GL_LINES);
     glColor3f(1,.3,.3);
-  glVertex3f(-10 * ms.x, -10 * ms.y, 0.0f);
-  glVertex3f(10 * ms.x, 10 * ms.y, 0.0f);
+    glVertex3f(0,0,0);
+    glVertex3f(10*mc.x, 10*mc.y, 0.0f);
   glEnd();
   glColor3f(1,1,1);
 
   // transformation
-  glRotatef(yangle,0,1,0);
-  glRotatef(xangle,1,0,0);
-  glRotatef(zangle,0,0,1);
-  glTranslatef(xtrans,0,0);
-  glScalef(xscale, yscale, zscale);
+  static GLfloat a[16] = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+  // glLoadMatrixf(a);
+  glPushMatrix();
+  // glLoadMatrixf(a);
+  glLoadIdentity();
+  // glGetFloatv(GL_MATRIX_MODE, a);
+  glPopMatrix();
+  glRotatef(zangle,mc.x,mc.y,0);
+  // glMultMatrixf(a);
+  // glRotatef(yangle,0,1,0);
+  // glRotatef(xangle,1,0,0);
+  // glRotatef(zangle,0,0,1);
+  // glTranslatef(xtrans,0,0);
+  // glScalef(xscale, yscale, zscale);
 
   glBegin(GL_TRIANGLES);
     // glColor3f(1,1,0);

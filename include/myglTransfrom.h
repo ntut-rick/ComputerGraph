@@ -39,27 +39,19 @@ void glRotatef(
    GLfloat y,
    GLfloat z
 ) {
-    if (x==1) {
-        rotateX(angle);
-        return;
-    }
-    if (y==1) {
-        rotateY(angle);
-        return;
-    }
-    if (z==1) {
-        rotateZ(angle);
-        return;
-    }
-    fprintf(stderr, "Sorry I didn't implement this :(\n");
-    exit(-1);
-    // GLfloat m[16] = {
-    //     x*x-, 0, 0, 0,
-    //     0, 1, 0, 0,
-    //     0, 0, 1, 0,
-    //     0, 0, 0, 1
-    // };
-    // glMultMatrixf(m);
+    float r = sqrt(x*x + y*y + z*z);
+    x /= r;
+    y /= r;
+    z /= r;
+    float c = cos(angle);
+    float s = sin(angle);
+    GLfloat m[16] = {
+        x*x*(1-c)+c  , x*y*(1-c)-z*s, x*z*(1-c)+y*s, 0,
+        y*x*(1-c)+z*s, y*y*(1-c)+c  , y*z*(1-c)-x*s, 0,
+        z*x*(1-c)-y*s, z*y*(1-c)+x*s, z*z*(1-c)+c  , 0,
+        0, 0, 0, 1
+    };
+    glMultMatrixf(m);
 }
 
 #ifdef glTranslatef
