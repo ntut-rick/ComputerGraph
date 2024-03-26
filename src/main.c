@@ -29,6 +29,12 @@ float xscale = 1;
 float yscale = 1;
 float zscale = 1;
 
+struct mc_t {
+  float x,y,z;
+};
+
+struct mc_t mc = {0,0,0};
+
 void Loop() {
   // yangle += ydelta;
   // xangle += xdelta;
@@ -71,6 +77,39 @@ void NormalKeyHandler (unsigned char key, int x, int y)
     }
 }
 
+void mouseClick(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        GLint viewport[4];
+        GLdouble modelview[16];
+        GLdouble projection[16];
+        GLfloat winX, winY, winZ;
+        GLdouble posX, posY, posZ;
+
+        glGetDoublev(GL_MODELVIEW_MATRIX, modelview);
+        glGetDoublev(GL_PROJECTION_MATRIX, projection);
+        glGetIntegerv(GL_VIEWPORT, viewport);
+
+        // windows' origin is left top.
+        winX = x;
+        winY = y; // OpenGL's 0 is at the bottom, so we need to invert mouseY
+        winZ = 0; // Assume we're working on a 2D plane, so we set winZ to 0 (the near plane)
+
+        // Use gluUnProject to map the screen position to world coordinates
+        gluUnProject(
+          winX, winY, winZ,
+          modelview, projection, viewport,
+          &posX, &posY, &posZ);
+
+        printf("Windo coords: %f, %f\n", winX, winY);
+        printf("World coords at z=0: %f, %f, %f\n", posX, posY, posZ);
+        mc.x = (float)x / 400 - 1;
+        mc.y = -(float)y / 400 + 1;
+        // mc.x = posX;
+        // mc.y = posY;
+        mc.z = 0;
+    }
+}
+
 int main(int argc, char **argv) {
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
@@ -85,6 +124,7 @@ int main(int argc, char **argv) {
 
   glutSpecialFunc (SpecialKeyHandler);
   glutKeyboardFunc (NormalKeyHandler);
+  glutMouseFunc(mouseClick);
 
   glutReshapeFunc(ChangeSize);
   glutDisplayFunc(RenderScene);
@@ -140,10 +180,14 @@ void RenderScene(void) {
   glEnable(GL_DEPTH_TEST);
 
   glLoadIdentity();
+  // gluLookAt(
+  //   1, 2, 10,
+  //   0, 0, 0,
+  //   1, 1, 0);
   gluLookAt(
-    1, 2, 10,
+    0, 0, 10,
     0, 0, 0,
-    1, 1, 0);
+    0, 1, 0);
   glShadeModel(glShadeType);
 
   // xyz-axes
@@ -155,10 +199,18 @@ void RenderScene(void) {
     glVertex3f(0,-100,0);
     glVertex3f(0,100,0);
   glEnd();
-      glBegin(GL_LINES);
+  glBegin(GL_LINES);
     glVertex3f(0,0,-100);
     glVertex3f(0,0,100);
   glEnd();
+  
+  // rotation vector
+  glBegin(GL_LINES);
+    glColor3f(1,.3,.3);
+  glVertex3f(-10 * ms.x, -10 * ms.y, 0.0f);
+  glVertex3f(10 * ms.x, 10 * ms.y, 0.0f);
+  glEnd();
+  glColor3f(1,1,1);
 
   // transformation
   glRotatef(yangle,0,1,0);
