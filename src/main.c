@@ -33,7 +33,9 @@ struct cood_t {
   float x,y;
 };
 
-struct cood_t mc = {0,0};
+// mouse click pos in view
+struct cood_t mc1 = {0,0};
+struct cood_t mc2 = {0,0};
 // struct cood_t win = {400,400};
 
 void Loop() {
@@ -41,6 +43,9 @@ void Loop() {
   // xangle += xdelta;
   glutPostRedisplay();
 }
+
+//window width/height
+int ww=400, wh=400;
 
 void SpecialKeyHandler(int key, int x, int y) 
 {
@@ -74,20 +79,31 @@ void NormalKeyHandler (unsigned char key, int x, int y)
     }
 }
 
-void mouseClick(int button, int state, int x, int y) {
+void mouseClick(int button, int state, int mx, int my) {
   if (button != GLUT_LEFT_BUTTON) {
     return;
   }
-  printf("mouse: %d %d\n", x, y);
+  printf("mouse: %d %d\n", mx, my);
 
-  GLint viewport[4];
+
+  if(x<ww/2) { // left (view 1)
+    printf("left");
+    glViewport(0,0,ww/2,wh);
+  } else { // right (view 2)
+    printf("right");
+    glViewport(ww/2,0,ww/2,wh);
+  }
+
+  GLint viewport[4]; // x y w h
   glGetIntegerv(GL_VIEWPORT, viewport);
-  
-  GLint h = viewport[3];
+  GLint offx = viewport[0];
+  GLint offy = viewport[1];
   GLint w = viewport[2];
+  GLint h = viewport[3];
 
-  mc.x = ((float)x / w)*2-1;
-  mc.y = ((float)y / h)*-2+1;
+  struct cood_t *mc = x<ww/2 ? &mc1 : &mc2;
+  mc->x = ((float)(mx-offx) / w)*2 - 1;
+  mc->y = ((float)(my-offy) / h)*-2 + 1;
 }
 
 int main(int argc, char **argv) {
@@ -95,7 +111,7 @@ int main(int argc, char **argv) {
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
   glutInitWindowSize(400, 400);
   glutInitWindowPosition(600, 80);
-  glutCreateWindow("Simple Triangle");
+  glutCreateWindow("Simple Jykuo");
 
   glutCreateMenu(MenuCallback);
   glutAddMenuEntry("GL_SMOOTH", 1);
@@ -114,64 +130,13 @@ int main(int argc, char **argv) {
   return 0;
 }
 void ChangeSize(int w, int h) {
+  ww = w;
+  wh = h;
   // printf("Window Size= %d X %d\n", w, h);
-  glViewport(0, 0, w, h);
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  glOrtho(-10, 10, -10, 10,
-          -10, 100);
-  glMatrixMode(GL_MODELVIEW);  
-  glLoadIdentity();
+  // glViewport(0, 0, w, h);
 }
-void RenderScene(void) {
-  GLuint texture;
-  int width, height, channels;
-  unsigned char* imageData = stbi_load("./kjy01601.png", &width, &height, &channels, 0);
 
-  glGenTextures(1, &texture);
-  glBindTexture(GL_TEXTURE_2D, texture);
-
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-  if(imageData) {
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
-      width, height,
-      0, GL_RGB, GL_UNSIGNED_BYTE, imageData);
-      stbi_image_free(imageData);
-  } else {
-    printf("nmsl");
-  }
-  
-  glEnable(GL_TEXTURE_2D);
-  glBindTexture(GL_TEXTURE_2D, texture);
-
-  // glBegin(GL_QUADS); // Example: Drawing a textured quad
-  //   glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  0.0f);
-  //   glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  0.0f);
-  //   glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  0.0f);
-  //   glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  0.0f);
-  // glEnd();
-  // glBindTexture(GL_TEXTURE_2D, 0);
-
-  glClearColor(0, 0, 0, 1.0);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  glMatrixMode(GL_MODELVIEW);
-  glEnable(GL_DEPTH_TEST);
-
-  glLoadIdentity();
-  // gluLookAt(
-  //   1, 2, 10,
-  //   0, 0, 0,
-  //   1, 1, 0);
-  gluLookAt(
-    0, 0, 10,
-    0, 0, 0,
-    0, 1, 0);
-  glShadeModel(glShadeType);
-
-  // xyz-axes
+void drawXYZaxes(void) {
   glBegin(GL_LINES);
     glVertex3f(100,0,0);
     glVertex3f(-100,0,0);
@@ -184,30 +149,32 @@ void RenderScene(void) {
     glVertex3f(0,0,-100);
     glVertex3f(0,0,100);
   glEnd();
-  
-  // rotation vector
-  glBegin(GL_LINES);
-    glColor3f(1,.3,.3);
-    glVertex3f(0,0,0);
-    glVertex3f(10*mc.x, 10*mc.y, 0.0f);
-  glEnd();
-  glColor3f(1,1,1);
+}
 
-  // transformation
-  static GLfloat a[16] = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
-  // glLoadMatrixf(a);
-  glPushMatrix();
-  // glLoadMatrixf(a);
-  glLoadIdentity();
-  // glGetFloatv(GL_MATRIX_MODE, a);
-  glPopMatrix();
-  glRotatef(zangle,mc.x,mc.y,0);
-  // glMultMatrixf(a);
-  // glRotatef(yangle,0,1,0);
-  // glRotatef(xangle,1,0,0);
-  // glRotatef(zangle,0,0,1);
-  // glTranslatef(xtrans,0,0);
-  // glScalef(xscale, yscale, zscale);
+void drawJykuo(void) {
+  // load jykuo texture BEGIN
+  GLuint texture;
+  int width, height, channels;
+  unsigned char* imageData = stbi_load("./kjy01601.png", &width, &height, &channels, 0);
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  if(imageData) {
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+      width, height,
+      0, GL_RGB, GL_UNSIGNED_BYTE, imageData);
+      stbi_image_free(imageData);
+  } else {
+    printf("where's jkuoy?");
+  }
+  
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, texture);
+
+  // load jykuo texture BEGIN
 
   glBegin(GL_TRIANGLES);
     // glColor3f(1,1,0);
@@ -233,6 +200,97 @@ void RenderScene(void) {
     glTexCoord2f(0.0f, 1.0f); glVertex3fv(PRYAMID_POINTS[4]);
     glTexCoord2f(1.0f, 1.0f); glVertex3fv(PRYAMID_POINTS[1]);
   glEnd();
+}
+
+void drawView1(void) {
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(-10, 10, -10, 10,
+          -10, 100);
+  glMatrixMode(GL_MODELVIEW);  
+  glLoadIdentity();
+  
+  glLoadIdentity();
+  // gluLookAt(
+  //   1, 2, 10,
+  //   0, 0, 0,
+  //   1, 1, 0);
+  gluLookAt(
+    0, 0, 10,
+    0, 0, 0,
+    0, 1, 0);
+  glShadeModel(glShadeType);
+
+  drawXYZaxes();
+  
+  // rotation vector
+  glBegin(GL_LINES);
+    glColor3f(1,.3,.3);
+    glVertex3f(0,0,0);
+    glVertex3f(10*mc1.x, 10*mc1.y, 0.0f);
+  glEnd();
+
+  glRotatef(zangle,mc1.x,mc1.y,0);
+
+  glColor3f(1,1,1);
+  drawJykuo();
+}
+void drawView2(void) {
+
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(-10, 10, -10, 10,
+          -10, 100);
+  glMatrixMode(GL_MODELVIEW);  
+  glLoadIdentity();
+  
+  glLoadIdentity();
+  gluLookAt(
+    0, 0, 10,
+    0, 0, 0,
+    0, 1, 0);
+  glShadeModel(glShadeType);
+
+  drawXYZaxes();
+  
+  // rotation vector
+  glBegin(GL_LINES);
+    glColor3f(1,.3,.3);
+    glVertex3f(0,0,0);
+    glVertex3f(10*mc2.x, 10*mc2.y, 0.0f);
+  glEnd();
+
+  glRotatef(zangle,mc2.x,mc2.y,0);
+
+  glColor3f(1,1,1);
+  drawJykuo();
+}
+
+void RenderScene(void) {
+
+  glEnable(GL_DEPTH_TEST);
+
+  // glBegin(GL_QUADS); // Example: Drawing a textured quad
+  //   glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  0.0f);
+  //   glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  0.0f);
+  //   glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  0.0f);
+  //   glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  0.0f);
+  // glEnd();
+  // glBindTexture(GL_TEXTURE_2D, 0);
+
+  // glClearColor(0, 0, 0, 1.0);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  glLoadIdentity();
+  glViewport(0,0,ww/2,wh);
+  glColor3f(0,1,1);
+  drawView1();
+
+  glLoadIdentity();
+  glViewport(ww/2,0,ww/2,wh);
+  glColor3f(1,1,0);
+  drawView2();
+
   glutSwapBuffers();
 }
 
