@@ -1,4 +1,3 @@
-#include <array>
 #include <filesystem>
 #include <vector>
 
@@ -7,7 +6,7 @@ struct Vertex {
 };
 
 struct Face {
-  unsigned int x, y, z;
+  unsigned int p0, p1, p2;
 };
 
 struct Model {

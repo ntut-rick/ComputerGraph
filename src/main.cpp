@@ -10,10 +10,12 @@
 #include "pryamid.h"
 #include "stb_image.h"
 
+#include <random>
+
 #include "loader.hpp"
 
 void ChangeSize(int, int);
-void RenderScene(void);
+void RenderScene();
 void MenuCallback(int);
 
 GLenum glShadeType = GL_SMOOTH;
@@ -208,19 +210,39 @@ void rot_z(float theta) {
   glMultMatrixd(rot_z);
 }
 
+struct Color {
+  float r, g, b;
+};
+
+Model m;
+std::vector<Color> colors;
+
+Color RandomColor() {
+  std::random_device rng;
+  std::default_random_engine e(rng());
+  std::uniform_real_distribution<GLfloat> dist(0.1F, 1.0F);
+
+  return Color{
+      dist(e),
+      dist(e),
+      dist(e),
+  };
+}
+
 int main(int argc, char **argv) {
-  Model m;
-  int err = load_model("../assets/octahedron.obj", m);
+  // int err = load_model("../assets/octahedron.obj", m);
+  int err = load_model("../assets/gourd.obj", m);
 
   if (err != 0) {
     return 1;
   }
 
-  for (const auto &v : m.vertices) {
-    printf("%f %f %f\n", v.x, v.y, v.z);
+  colors.reserve(m.faces.size());
+  for (std::size_t i = 0; i < m.faces.size(); ++i) {
+    Color c = RandomColor();
+    colors.push_back(c);
   }
 
-  return 0;
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutInitWindowSize(800, 800);
@@ -251,37 +273,8 @@ void ChangeSize(int w, int h) {
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 }
-void RenderScene(void) {
-  GLuint texture;
-  int width, height, channels;
-  unsigned char *imageData =
-      stbi_load("./kjy01601.png", &width, &height, &channels, 0);
 
-  glGenTextures(1, &texture);
-  glBindTexture(GL_TEXTURE_2D, texture);
-
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-  if (imageData) {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
-                 GL_UNSIGNED_BYTE, imageData);
-    stbi_image_free(imageData);
-  } else {
-    printf("nmsl");
-  }
-
-  glEnable(GL_TEXTURE_2D);
-  glBindTexture(GL_TEXTURE_2D, texture);
-
-  // glBegin(GL_QUADS); // Example: Drawing a textured quad
-  //   glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  0.0f);
-  //   glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  0.0f);
-  //   glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  0.0f);
-  //   glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  0.0f);
-  // glEnd();
-  // glBindTexture(GL_TEXTURE_2D, 0);
-
+void RenderScene() {
   glClearColor(0, 0, 0, 1.0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -334,42 +327,60 @@ void RenderScene(void) {
   rot_y(xangle);
   rot_z(-asin(ux));
   glMultMatrixd(scale);
-  glBegin(GL_TRIANGLES);
-  // glColor3f(1,1,0);
-  glTexCoord2f(0.5f, 0.0f);
-  glVertex3fv(PRYAMID_POINTS[0]);
-  glTexCoord2f(0.0f, 1.0f);
-  glVertex3fv(PRYAMID_POINTS[1]);
-  glTexCoord2f(1.0f, 1.0f);
-  glVertex3fv(PRYAMID_POINTS[2]);
-  glEnd();
-  glBegin(GL_TRIANGLES);
-  // glColor3f(0,1,1);
-  glTexCoord2f(0.5f, 0.0f);
-  glVertex3fv(PRYAMID_POINTS[0]);
-  glTexCoord2f(0.0f, 1.0f);
-  glVertex3fv(PRYAMID_POINTS[2]);
-  glTexCoord2f(1.0f, 1.0f);
-  glVertex3fv(PRYAMID_POINTS[3]);
-  glEnd();
-  glBegin(GL_TRIANGLES);
-  // glColor3f(1,0,1);
-  glTexCoord2f(0.5f, 0.0f);
-  glVertex3fv(PRYAMID_POINTS[0]);
-  glTexCoord2f(0.0f, 1.0f);
-  glVertex3fv(PRYAMID_POINTS[3]);
-  glTexCoord2f(1.0f, 1.0f);
-  glVertex3fv(PRYAMID_POINTS[4]);
-  glEnd();
-  glBegin(GL_TRIANGLES);
-  // glColor3f(1,0,0);
-  glTexCoord2f(0.5f, 0.0f);
-  glVertex3fv(PRYAMID_POINTS[0]);
-  glTexCoord2f(0.0f, 1.0f);
-  glVertex3fv(PRYAMID_POINTS[4]);
-  glTexCoord2f(1.0f, 1.0f);
-  glVertex3fv(PRYAMID_POINTS[1]);
-  glEnd();
+
+  int index = 0;
+  for (const auto &f : m.faces) {
+    glBegin(GL_TRIANGLES);
+
+    glColor3f(colors[index].r, colors[index].g, colors[index].b);
+    index++;
+
+    const auto p0 = m.vertices[f.p0 - 1];
+    glVertex3f(p0.x, p0.y, p0.z);
+
+    const auto p1 = m.vertices[f.p1 - 1];
+    glVertex3f(p1.x, p1.y, p1.z);
+
+    const auto p2 = m.vertices[f.p2 - 1];
+    glVertex3f(p2.x, p2.y, p2.z);
+    glEnd();
+  }
+  // glBegin(GL_TRIANGLES);
+  // // glColor3f(1,1,0);
+  // glTexCoord2f(0.5f, 0.0f);
+  // glVertex3fv(PRYAMID_POINTS[0]);
+  // glTexCoord2f(0.0f, 1.0f);
+  // glVertex3fv(PRYAMID_POINTS[1]);
+  // glTexCoord2f(1.0f, 1.0f);
+  // glVertex3fv(PRYAMID_POINTS[2]);
+  // glEnd();
+  // glBegin(GL_TRIANGLES);
+  // // glColor3f(0,1,1);
+  // glTexCoord2f(0.5f, 0.0f);
+  // glVertex3fv(PRYAMID_POINTS[0]);
+  // glTexCoord2f(0.0f, 1.0f);
+  // glVertex3fv(PRYAMID_POINTS[2]);
+  // glTexCoord2f(1.0f, 1.0f);
+  // glVertex3fv(PRYAMID_POINTS[3]);
+  // glEnd();
+  // glBegin(GL_TRIANGLES);
+  // // glColor3f(1,0,1);
+  // glTexCoord2f(0.5f, 0.0f);
+  // glVertex3fv(PRYAMID_POINTS[0]);
+  // glTexCoord2f(0.0f, 1.0f);
+  // glVertex3fv(PRYAMID_POINTS[3]);
+  // glTexCoord2f(1.0f, 1.0f);
+  // glVertex3fv(PRYAMID_POINTS[4]);
+  // glEnd();
+  // glBegin(GL_TRIANGLES);
+  // // glColor3f(1,0,0);
+  // glTexCoord2f(0.5f, 0.0f);
+  // glVertex3fv(PRYAMID_POINTS[0]);
+  // glTexCoord2f(0.0f, 1.0f);
+  // glVertex3fv(PRYAMID_POINTS[4]);
+  // glTexCoord2f(1.0f, 1.0f);
+  // glVertex3fv(PRYAMID_POINTS[1]);
+  // glEnd();
 
   glutSwapBuffers();
 }

@@ -31,7 +31,7 @@ int load_model(const std::filesystem::path &path, Model &model) {
 
     if (token == "f") {
       Face f;
-      iss >> f.x >> f.y >> f.z;
+      iss >> f.p0 >> f.p1 >> f.p2;
       faces.push_back(f);
       continue;
     }
