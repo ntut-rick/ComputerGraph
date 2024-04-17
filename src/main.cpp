@@ -10,6 +10,8 @@
 #include "pryamid.h"
 #include "stb_image.h"
 
+#include "loader.hpp"
+
 void ChangeSize(int, int);
 void RenderScene(void);
 void MenuCallback(int);
@@ -30,6 +32,9 @@ float zscale = 1;
 float ydelta = .2f;
 float xdelta = .2f;
 
+float clickx = 0;
+float clicky = 0;
+
 void Loop() {
   // yangle += ydelta;
   // xangle += xdelta;
@@ -38,7 +43,16 @@ void Loop() {
 
 #define PI 3.14159265358979323846
 
-double deg2rad(double deg) { return deg; }
+double deg2deg(double deg) { return deg; }
+
+void MouseHandler(int button, int state, int x, int y) {
+  if (button != GLUT_LEFT_BUTTON) {
+    return;
+  }
+
+  clickx = (float)x / 400 - 1;
+  clicky = -(float)y / 400 + 1;
+}
 
 void SpecialKeyHandler(int key, int x, int y) {
   switch (key) {
@@ -129,7 +143,84 @@ void NormalKeyHandler(unsigned char key, int x, int y) {
   }
 }
 
+void rot_x(float theta) {
+  double rot_x[] = {
+      1,
+      0,
+      0,
+      0, //
+      0,
+      cos(deg2deg(theta)),
+      sin(deg2deg(theta)),
+      0, //
+      0,
+      -sin(deg2deg(theta)),
+      cos(deg2deg(theta)),
+      0, //
+      0,
+      0,
+      0,
+      1, //
+  };
+
+  glMultMatrixd(rot_x);
+}
+void rot_y(float theta) {
+  double rot_y[] = {
+      cos(deg2deg(theta)),
+      0,
+      -sin(deg2deg(theta)),
+      0, //
+      0,
+      1,
+      0,
+      0, //
+      sin(deg2deg(theta)),
+      0,
+      cos(deg2deg(theta)),
+      0, //
+      0,
+      0,
+      0,
+      1, //
+  };
+  glMultMatrixd(rot_y);
+}
+void rot_z(float theta) {
+  double rot_z[] = {
+      cos(deg2deg(theta)),
+      -sin(deg2deg(theta)),
+      0,
+      0, //
+      sin(deg2deg(theta)),
+      cos(deg2deg(theta)),
+      0,
+      0, //
+      0,
+      0,
+      1,
+      0, //
+      0,
+      0,
+      0,
+      1, //
+  };
+  glMultMatrixd(rot_z);
+}
+
 int main(int argc, char **argv) {
+  Model m;
+  int err = load_model("../assets/octahedron.obj", m);
+
+  if (err != 0) {
+    return 1;
+  }
+
+  for (const auto &v : m.vertices) {
+    printf("%f %f %f\n", v.x, v.y, v.z);
+  }
+
+  return 0;
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutInitWindowSize(800, 800);
@@ -143,6 +234,7 @@ int main(int argc, char **argv) {
 
   glutSpecialFunc(SpecialKeyHandler);
   glutKeyboardFunc(NormalKeyHandler);
+  glutMouseFunc(MouseHandler);
 
   glutReshapeFunc(ChangeSize);
   glutDisplayFunc(RenderScene);
@@ -197,59 +289,50 @@ void RenderScene(void) {
   glEnable(GL_DEPTH_TEST);
 
   glLoadIdentity();
-  gluLookAt(1, 2, 10, 0, 0, 0, 1, 1, 0);
+  gluLookAt(1, 2, 10, 0, 0, 0, 0, 1, 0);
   glShadeModel(glShadeType);
 
   glBegin(GL_LINES);
+  glColor3f(1.0f, 0.0f, 0.0f);
   glVertex3f(100, 0, 0);
   glVertex3f(-100, 0, 0);
   glEnd();
   glBegin(GL_LINES);
+  glColor3f(0.0f, 1.0f, 0.0f);
   glVertex3f(0, -100, 0);
   glVertex3f(0, 100, 0);
   glEnd();
   glBegin(GL_LINES);
+  glColor3f(0.0f, 0.0f, 1.0f);
   glVertex3f(0, 0, -100);
   glVertex3f(0, 0, 100);
   glEnd();
+  glBegin(GL_LINES);
+  glColor3f(1.0f, 0.0f, 1.0f);
+  glVertex3f(-10 * clickx, -10 * clicky, 0.0f);
+  glVertex3f(10 * clickx, 10 * clicky, 0.0f);
+  glColor3f(1.0f, 1.0f, 1.0f);
+  glEnd();
 
   double trans[] = {
-      1, 0, 0, 0, //
-      0, 1, 0, 0, //
-      0, 0, 1, 0, //
+      1,      0,      0,      0, //
+      0,      1,      0,      0, //
+      0,      0,      1,      0, //
       xtrans, ytrans, ztrans, 1, //
   };
 
-  double rot_x[] = {
-      1, 0, 0, 0, //
-      0, cos(deg2rad(xangle)), sin(deg2rad(xangle)), 0, //
-      0, -sin(deg2rad(xangle)), cos(deg2rad(xangle)), 0, //
-      0, 0, 0, 1, //
-  };
-  double rot_y[] = {
-      cos(deg2rad(yangle)), 0, -sin(deg2rad(yangle)), 0, //
-      0, 1, 0, 0, //
-      sin(deg2rad(yangle)), 0, cos(deg2rad(yangle)), 0, //
-      0, 0, 0, 1, //
-  };
-  double rot_z[] = {
-      cos(deg2rad(zangle)), -sin(deg2rad(zangle)), 0, 0, //
-      sin(deg2rad(zangle)), cos(deg2rad(zangle)), 0, 0, //
-      0, 0, 1, 0, //
-      0, 0, 0, 1, //
-  };
+  double l = sqrt(clickx * clickx + clicky * clicky);
+  double ux = clickx / l;
+  double uy = clicky / l;
 
   double scale[] = {
-    xscale, 0,  0,  0,
-    0,  yscale, 0,  0,
-    0,  0,  zscale, 0,
-    0,  0,  0,  1,
+      xscale, 0, 0, 0, 0, yscale, 0, 0, 0, 0, zscale, 0, 0, 0, 0, 1,
   };
   /* glRotatef(yangle, 0, 1, 0); */
   glMultMatrixd(trans);
-  glMultMatrixd(rot_x);
-  glMultMatrixd(rot_y);
-  glMultMatrixd(rot_z);
+  rot_z(asin(ux));
+  rot_y(xangle);
+  rot_z(-asin(ux));
   glMultMatrixd(scale);
   glBegin(GL_TRIANGLES);
   // glColor3f(1,1,0);
@@ -287,6 +370,7 @@ void RenderScene(void) {
   glTexCoord2f(1.0f, 1.0f);
   glVertex3fv(PRYAMID_POINTS[1]);
   glEnd();
+
   glutSwapBuffers();
 }
 

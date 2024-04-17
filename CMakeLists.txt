@@ -5,15 +5,24 @@ set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
 set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 
 # this two line don't work new.
-set(INCLUDE_FILE)
-set(SRC_FILES)
+# set(INCLUDE_FILE)
+# set(SRC_FILES)
+set(OpenGL_GL_PREFERENCE LEGACY)
 add_subdirectory(thirdparty/freeglut)
 
 # you need pre-install OpenGL, GLU, please google
 
-add_executable(${PROJECT_NAME} ${SRC_DIR}/main.c)
+add_executable(${PROJECT_NAME}
+    ${SRC_DIR}/loader.hpp
+
+    ${SRC_DIR}/main.cpp
+    ${SRC_DIR}/loader.cpp
+    ${CMAKE_SOURCE_DIR}/thirdparty/tinyobj_loader_c/tinyobj_loader_c.c
+)
 target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} ${OPENGL_glu_LIBRARY})
 target_link_libraries(${PROJECT_NAME} freeglut)
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/thirdparty/freeglut/include/GL
-    ${INCLUDE_DIR})
+    ${CMAKE_SOURCE_DIR}/thirdparty/tinyobj_loader_c/
+    ${INCLUDE_DIR}
+)
