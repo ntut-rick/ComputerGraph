@@ -64,8 +64,8 @@ std::array<int, 2> windowSize{800, 800};
 int main(int argc, char **argv) {
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-  glutInitWindowSize(800, 800);
-  glutInitWindowPosition(600, 80);
+  glutInitWindowSize(400, 400);
+  glutInitWindowPosition(0, 0);
   glutCreateWindow("Niu-Bi de CG Midterm Work");
 
   // glutCreateMenu(MenuCallback);
@@ -98,8 +98,9 @@ void ChangeSize(int w, int h) {
   glOrtho(ortho_settings[0], ortho_settings[1], ortho_settings[2],
           ortho_settings[3], ortho_settings[4], ortho_settings[5]);
   glMatrixMode(GL_MODELVIEW);
-  gluLookAt(camera_pos[0], camera_pos[1], camera_pos[2], camera_look_at[0],
-            camera_look_at[1], camera_look_at[2], 0, 1, 0);
+  gluLookAt(camera_pos[0], camera_pos[1], camera_pos[2],
+            camera_look_at[0], camera_look_at[1], camera_look_at[2],
+            0, 1, 0);
   glLoadIdentity();
 }
 
@@ -140,8 +141,9 @@ void RenderScene(void) {
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
   // TODO: we should calculate the up vector, but now I am lazy to do it.
-  gluLookAt(camera_pos[0], camera_pos[1], camera_pos[2], camera_look_at[0],
-            camera_look_at[1], camera_look_at[2], 0, 1, 0);
+  gluLookAt(camera_pos[0], camera_pos[1], camera_pos[2],
+            camera_look_at[0], camera_look_at[1], camera_look_at[2],
+            0, 1, 0);
   glEnable(GL_DEPTH_TEST);
 
   drawXYZaxes();
@@ -159,6 +161,12 @@ void RenderScene(void) {
         glVertex3fv(curret_obj.vertices[face[1]].data());
         glVertex3fv(curret_obj.vertices[face[2]].data());
       glEnd();
+      // glColor3f(0,0,0);
+      // glBegin(GL_LINE_LOOP);
+      //   glVertex3fv(curret_obj.vertices[face[0]].data());
+      //   glVertex3fv(curret_obj.vertices[face[1]].data());
+      //   glVertex3fv(curret_obj.vertices[face[2]].data());
+      // glEnd();
     }
   }
 
@@ -171,7 +179,7 @@ void MousePress(int button, int state, int x, int y) {
   if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
     last_x = x;
     last_y = y;
-    printf("reset xy\n");
+    // printf("reset xy\n");
     // if (mousepoint01Status == false) {
     //   mouseViewport1WorldPos1[0] = (2 * ((float)x / 800) - 1) * (10);
     //   mouseViewport1WorldPos1[1] = (-2 * ((float)y / 800) + 1) * (10);
@@ -225,7 +233,7 @@ void RenderModeMenuCallback(int value) {
       render_mode = GL_POINTS;
       break;
     case 2:
-      render_mode = GL_LINES;
+      render_mode = GL_LINE_LOOP;
       break;
     case 3:
       render_mode = GL_TRIANGLES;
@@ -267,17 +275,19 @@ void OnKeyBoardPress(unsigned char key, int x, int y) {
 //
 //  auto transform = current_display_obj->get_transform();
 //
-//  if (key == ' ') {
-//    current_display_obj->set_transform_to_target({0, 0, 0}, ortho_settings);
-//    transform->set_rotation_by_euler({0, 0, 0});
-//    transform->set_rotation_by_axis(0, {0, 0, 1});
-//    camera_pos = {0, 0, 10};
-//    camera_look_at = {0, 0, 0};
-//    glutPostRedisplay();
-//    return;
-//  }
+  if (key == ' ') {
+    xangle = 0;
+    yangle = 0;
+    // current_display_obj->set_transform_to_target({0, 0, 0}, ortho_settings);
+    // transform->set_rotation_by_euler({0, 0, 0});
+    // transform->set_rotation_by_axis(0, {0, 0, 1});
+    // camera_pos = {0, 0, 10};
+    // camera_look_at = {0, 0, 0};
+    // glutPostRedisplay();
+    // return;
+  }
 //
-//  glutPostRedisplay();
+  glutPostRedisplay();
 }
 
 int BuildManu() {
