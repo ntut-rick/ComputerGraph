@@ -9,13 +9,13 @@ add_subdirectory(thirdparty/freeglut)
 
 # this two line don't work new.
 set(INCLUDE_FILES
-    ${INCLUDE_DIR}/OBJLoader.hpp
-    ${INCLUDE_DIR}/DrawableObject.hpp
-    ${INCLUDE_DIR}/Transform.hpp
+#    ${INCLUDE_DIR}/OBJLoader.hpp
+    ${INCLUDE_DIR}/NiuBiObject.hpp
+#    ${INCLUDE_DIR}/Transform.hpp
 )
 set(SRC_FILES
-    ${SRC_DIR}/DrawableObject.cpp
-    ${SRC_DIR}/Transform.cpp
+#    ${SRC_DIR}/DrawableObject.cpp
+#    ${SRC_DIR}/Transform.cpp
 )
 
 add_executable(${PROJECT_NAME}
