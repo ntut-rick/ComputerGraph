@@ -38,6 +38,8 @@ void MousePress(int button, int state, int x, int y);
 void RenderModeMenuCallback(int);
 void RotationModeCallback(int);
 
+void MouseDrag(int, int);
+
 std::array<float, 3> mouseViewport1WorldPos1{10, 10, 0};
 std::array<float, 3> mouseViewport1WorldPos2{10, 10, 0};
 std::array<int, 6> ortho_settings = {-10, 10, -10, 10, -50, 50};
@@ -46,12 +48,28 @@ std::array<double, 3> camera_look_at = {0, 0, 0};
 
 bool mousepoint01Status = false;
 
-std::array<float, 3> generate_random_color();
+///
+
+int BuildManu();
 
 std::vector<NiuBiObject> loaded_objs;
+int selected_obj_index = 0;
+
+GLfloat xangle = 0;
+GLfloat yangle = 0;
+
+GLenum render_mode = GL_LINES;
 
 std::array<int, 2> windowSize{800, 800};
 int main(int argc, char **argv) {
+  glutInit(&argc, argv);
+  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+  glutInitWindowSize(800, 800);
+  glutInitWindowPosition(600, 80);
+  glutCreateWindow("Niu-Bi de CG Midterm Work");
+
+  // glutCreateMenu(MenuCallback);
+  BuildManu();
   loaded_objs.clear();
   for (int i=1; i<argc; i++) {
     if (!std::filesystem::exists(argv[i])) {
@@ -62,16 +80,12 @@ int main(int argc, char **argv) {
     loaded_objs.push_back(obj);
     glutAddMenuEntry(argv[i], i);
   }
-
-  glutInit(&argc, argv);
-  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-  glutInitWindowSize(800, 800);
-  glutInitWindowPosition(600, 80);
-  glutCreateWindow("Niu-Bi de CG Midterm Work");
+  glutAttachMenu(GLUT_RIGHT_BUTTON);
 
   glutReshapeFunc(ChangeSize);
   glutKeyboardFunc(OnKeyBoardPress);
   glutMouseFunc(MousePress);
+  glutMotionFunc(MouseDrag);
   glutDisplayFunc(RenderScene);
   glutMainLoop(); // http://www.programmer-club.com.tw/ShowSameTitleN/opengl/2288.html
   return 0;
@@ -89,6 +103,36 @@ void ChangeSize(int w, int h) {
   glLoadIdentity();
 }
 
+void drawXYZaxes(void) {
+  glBegin(GL_LINES);
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glVertex3f(100.0f, 0.0f, 0.0f);
+    glVertex3f(-100.0f, 0.0f, 0.0f);
+  glEnd();
+  glBegin(GL_LINES);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(0.0f, 100.0f, 0.0f);
+    glVertex3f(0.0f, -100.0f, 0.0f);
+  glEnd();
+  glBegin(GL_LINES);
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glVertex3f(0.0f, 0.0f, 100.0f);
+    glVertex3f(0.0f, 0.0f, -100.0f);
+  glEnd();
+}
+
+void singlecolor(void) {
+  glColor3f(1,1,1);
+}
+void randomcolor(void) {
+  float r,g,b;
+  r = (float)rand() / RAND_MAX;
+  g = (float)rand() / RAND_MAX;
+  b = (float)rand() / RAND_MAX;
+  glColor3f(r,g,b);
+}
+void (*setcolorfuncion)(void) = singlecolor;
+
 void RenderScene(void) {
   glClearColor(0, 0, 0, 1.0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -100,83 +144,93 @@ void RenderScene(void) {
             camera_look_at[1], camera_look_at[2], 0, 1, 0);
   glEnable(GL_DEPTH_TEST);
 
-  glBegin(GL_LINES);
-  glColor3f(1.0f, 0.0f, 0.0f);
-  glVertex3f(100.0f, 0.0f, 0.0f);
-  glVertex3f(-100.0f, 0.0f, 0.0f);
-  glEnd();
+  drawXYZaxes();
 
-  glBegin(GL_LINES);
-  glColor3f(0.0f, 1.0f, 0.0f);
-  glVertex3f(0.0f, 100.0f, 0.0f);
-  glVertex3f(0.0f, -100.0f, 0.0f);
-  glEnd();
+  glRotatef(xangle, 1,0,0);
+  glRotatef(yangle, 0,1,0);
 
-  glBegin(GL_LINES);
-  glColor3f(0.0f, 0.0f, 1.0f);
-  glVertex3f(0.0f, 0.0f, 100.0f);
-  glVertex3f(0.0f, 0.0f, -100.0f);
-  glEnd();
-
-//  if (current_display_obj != nullptr) {
-//    if (current_display_obj->get_transform()->get_rotation_type() ==
-//        Transform::RotationType::ANYAXIS) {
-//      glBegin(GL_LINES);
-//      glColor3f(1.0f, 1.0f, 1.0f);
-//      glVertex3fv(mouseViewport1WorldPos1.data());
-//      glVertex3fv(mouseViewport1WorldPos2.data());
-//      glEnd();
-//    }
-//
-//    current_display_obj->draw(current_draw_mode);
-//  }
+  if (selected_obj_index < loaded_objs.size()) {
+    auto curret_obj = loaded_objs[selected_obj_index];
+    for(auto face : curret_obj.faces) {
+      glColor3f(1.0f, 1.0f, 1.0f);
+      setcolorfuncion();
+      glBegin(render_mode);
+        glVertex3fv(curret_obj.vertices[face[0]].data());
+        glVertex3fv(curret_obj.vertices[face[1]].data());
+        glVertex3fv(curret_obj.vertices[face[2]].data());
+      glEnd();
+    }
+  }
 
   glutSwapBuffers();
 }
 
-void MenuCallback(int value) {
-//  if (value > objs.size()) {
-//    LoadObjFileAndRecreateMenu(objs, current_menu_id);
-//    for (auto &obj : objs) {
-//      obj->set_transform_to_target({0, 0, 0}, ortho_settings);
-//    }
-//    return;
-//  }
-//  current_display_obj = objs[value - 1];
 
+int last_x, last_y;
+void MousePress(int button, int state, int x, int y) {
+  if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+    last_x = x;
+    last_y = y;
+    printf("reset xy\n");
+    // if (mousepoint01Status == false) {
+    //   mouseViewport1WorldPos1[0] = (2 * ((float)x / 800) - 1) * (10);
+    //   mouseViewport1WorldPos1[1] = (-2 * ((float)y / 800) + 1) * (10);
+    //   mouseViewport1WorldPos1[2] = 0;
+    //   mousepoint01Status = true;
+    // } else {
+    //   mouseViewport1WorldPos2[0] = (2 * ((float)x / 800) - 1) * (10);
+    //   mouseViewport1WorldPos2[1] = (-2 * ((float)y / 800) + 1) * (10);
+    //   mouseViewport1WorldPos2[2] = 0;
+    //   mousepoint01Status = false;
+    // }
+  }
+  // gluInvertMatrix();
+  glutPostRedisplay();
+}
+void MouseDrag(int x, int y) {
+  // static int last_x = x;
+  // static int last_y = y;
+  const int dx = x - last_x;
+  const int dy = y - last_y;
+  xangle += dy;
+  yangle += dx;
+  // printf("xa:%f, ya:%f\\", xangle, yangle);
+  // printf("moude delta = %d %d\n", dx, dy);
+  last_x = x;
+  last_y = y;
+  glutPostRedisplay();
+}
+
+void MenuCallback(int value) {
+  selected_obj_index = value-1;
+  printf("selected_obj_index = %d\n", selected_obj_index);
   glutPostRedisplay();
 }
 
 void ColorModeMenuCallback(int value) {
-//
-//  for (int i = 0; i < objs.size(); i++) {
-//    std::vector<std::array<float, 3>> face_colors;
-//    face_colors.resize(objs[i]->get_face_count());
-//
-//    for (auto &face_color : face_colors) {
-//      std::array<float, 3> color;
-//      if (value == 1) {
-//        color = generate_random_color();
-//      } else {
-//        color = {0.5f, 0.5f, 0.5f};
-//      }
-//      face_color = color;
-//    }
-//
-//    objs[i]->set_face_color(face_colors);
-//  }
-
+  switch(value) {
+    case 1:
+      setcolorfuncion = singlecolor;
+      break;
+    case 2:
+      setcolorfuncion = randomcolor;
+      break;
+  }
   glutPostRedisplay();
 }
 
 void RenderModeMenuCallback(int value) {
-//  if (value == 1) {
-//    current_draw_mode = DrawableObject::DrawType::POINTS;
-//  } else if (value == 2) {
-//    current_draw_mode = DrawableObject::DrawType::LINES;
-//  } else {
-//    current_draw_mode = DrawableObject::DrawType::FACES;
-//  }
+  switch(value) {
+    case 1:
+      render_mode = GL_POINTS;
+      break;
+    case 2:
+      render_mode = GL_LINES;
+      break;
+    case 3:
+      render_mode = GL_TRIANGLES;
+      break;
+  }
   glutPostRedisplay();
 }
 
@@ -226,73 +280,23 @@ void OnKeyBoardPress(unsigned char key, int x, int y) {
 //  glutPostRedisplay();
 }
 
-void MousePress(int button, int state, int x, int y) {
-  if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-    if (mousepoint01Status == false) {
-      mouseViewport1WorldPos1[0] = (2 * ((float)x / 800) - 1) * (10);
-      mouseViewport1WorldPos1[1] = (-2 * ((float)y / 800) + 1) * (10);
-      mouseViewport1WorldPos1[2] = 0;
-      mousepoint01Status = true;
-    } else {
-      mouseViewport1WorldPos2[0] = (2 * ((float)x / 800) - 1) * (10);
-      mouseViewport1WorldPos2[1] = (-2 * ((float)y / 800) + 1) * (10);
-      mouseViewport1WorldPos2[2] = 0;
-      mousepoint01Status = false;
-    }
-  }
-  // gluInvertMatrix();
-  glutPostRedisplay();
-}
+int BuildManu() {
+  int submenu_color = glutCreateMenu(ColorModeMenuCallback);
+  glutAddMenuEntry("Single Color", 1);
+  glutAddMenuEntry("Random Colors", 2);
 
-//void LoadObjFileAndRecreateMenu(
-//    std::vector<std::shared_ptr<DrawableObject>> &obj_list, int &menu_id) {
-//
-//  if (menu_id != -1) {
-//    glutDestroyMenu(menu_id);
-//  }
-//  obj_list.clear(); // clear old date, make sure no repeated data.
-//
-//  int submenu_color = glutCreateMenu(ColorModeMenuCallback);
-//  glutAddMenuEntry("RandomColor", 1);
-//  glutAddMenuEntry("SingleColor", 2);
-//
-//  int submenu_renderMode = glutCreateMenu(RenderModeMenuCallback);
-//  glutAddMenuEntry("Points", 1);
-//  glutAddMenuEntry("Lines", 2);
-//  glutAddMenuEntry("Faces", 3);
-//
-//  int submenu_rotation_mode = glutCreateMenu(RotationModeCallback);
-//  glutAddMenuEntry("Euler", 1);
-//  glutAddMenuEntry("Any Axis", 2);
-//
-//  menu_id = glutCreateMenu(MenuCallback); // GLUT Not Support remove menu
-//                                          // item, so we need reCreate one.
-//
-//  glutAddSubMenu("ColorMode", submenu_color);
-//  glutAddSubMenu("RenderMode", submenu_renderMode);
-//  glutAddSubMenu("RotationMode", submenu_rotation_mode);
-//
-//  int count = 1;
-//  for (const auto &entry : std::filesystem::directory_iterator(RESOURCE_DIR)) {
-//    if (std::filesystem::is_regular_file(entry)) {
-//      std::cout << "file_name: " << entry.path().filename() << std::endl;
-//      const std::string &filePath = entry.path().string();
-//      obj_list.push_back(obj_loader->get_OBJ(filePath));
-//      std::string filename = entry.path().filename().string();
-//      const char *menuEntry = filename.c_str();
-//      glutAddMenuEntry(menuEntry, count);
-//      count++;
-//    }
-//  }
+  int submenu_renderMode = glutCreateMenu(RenderModeMenuCallback);
+  glutAddMenuEntry("Point", 1);
+  glutAddMenuEntry("Line", 2);
+  glutAddMenuEntry("Face", 3);
+
+  // GLUT Doesn't Support remove menu item, so we need to recreate one. by HEKEPOIU
+  int menu_id = glutCreateMenu(MenuCallback);
+
+  glutAddSubMenu("Color Mode", submenu_color);
+  glutAddSubMenu("Render Mode", submenu_renderMode);
+
+  return menu_id;
+
 //  glutAddMenuEntry("Reload Path", count);
-//
-//  glutAttachMenu(GLUT_RIGHT_BUTTON);
-//}
-
-std::array<float, 3> generate_random_color() {
-  std::array<float, 3> color{};
-  color[0] = (float)rand() / RAND_MAX;
-  color[1] = (float)rand() / RAND_MAX;
-  color[2] = (float)rand() / RAND_MAX;
-  return color;
 }
