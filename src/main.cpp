@@ -1,10 +1,13 @@
 
+#ifdef _MSC_VER
 #include "freeglut_std.h"
+#else
+#include <freeglut.h>
+#endif
+
 #include <GL/gl.h>
 #include <math.h>
 #include <stdio.h>
-/*** freeglut***/
-#include <freeglut.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "pryamid.h"
@@ -16,7 +19,15 @@
 
 void ChangeSize(int, int);
 void RenderScene();
-void MenuCallback(int);
+void DisplayTypeMenuCallback(int);
+
+enum DisplayType {
+  Point,
+  Line,
+  Face,
+};
+
+DisplayType dt = DisplayType::Face;
 
 GLenum glShadeType = GL_SMOOTH;
 float xtrans = 0;
@@ -34,8 +45,8 @@ float zscale = 1;
 float ydelta = .2f;
 float xdelta = .2f;
 
-float clickx = 0;
-float clicky = 0;
+float clickx = 1;
+float clicky = 1;
 
 void Loop() {
   // yangle += ydelta;
@@ -75,62 +86,28 @@ void SpecialKeyHandler(int key, int x, int y) {
 
 void NormalKeyHandler(unsigned char key, int x, int y) {
   switch (key) {
-  case 'w':
-    xangle += 0.05f;
-    break;
-  case 'q':
-    xangle -= 0.05f;
-    break;
-  case 's':
-    yangle += 0.05f;
-    break;
-  case 'a':
-    yangle -= 0.05f;
-    break;
-  case 'x':
-    zangle += 0.05f;
-    break;
-  case 'z':
-    zangle -= 0.05f;
-    break;
+    // clang-format off
+  case 'w': xangle += 0.05f; break;
+  case 'q': xangle -= 0.05f; break;
+  case 's': yangle += 0.05f; break;
+  case 'a': yangle -= 0.05f; break;
+  case 'x': zangle += 0.05f; break;
+  case 'z': zangle -= 0.05f; break;
 
-  case 'r':
-    xtrans += 0.1f;
-    break;
-  case 'e':
-    xtrans -= 0.1f;
-    break;
-  case 'f':
-    ytrans += 0.1f;
-    break;
-  case 'd':
-    ytrans -= 0.1f;
-    break;
-  case 'v':
-    ztrans += 0.1f;
-    break;
-  case 'c':
-    ztrans -= 0.1f;
-    break;
+  case 'r': xtrans += 0.1f; break;
+  case 'e': xtrans -= 0.1f; break;
+  case 'f': ytrans += 0.1f; break;
+  case 'd': ytrans -= 0.1f; break;
+  case 'v': ztrans += 0.1f; break;
+  case 'c': ztrans -= 0.1f; break;
 
-  case 'y':
-    xscale += 0.1f;
-    break;
-  case 't':
-    xscale -= 0.1f;
-    break;
-  case 'h':
-    yscale += 0.1f;
-    break;
-  case 'g':
-    yscale -= 0.1f;
-    break;
-  case 'n':
-    zscale += 0.1f;
-    break;
-  case 'b':
-    zscale -= 0.1f;
-    break;
+  case 'y': xscale += 0.1f; break;
+  case 't': xscale -= 0.1f; break;
+  case 'h': yscale += 0.1f; break;
+  case 'g': yscale -= 0.1f; break;
+  case 'n': zscale += 0.1f; break;
+  case 'b': zscale -= 0.1f; break;
+  // clang-format on
   case '1':
     xangle = 0;
     yangle = 45;
@@ -145,70 +122,35 @@ void NormalKeyHandler(unsigned char key, int x, int y) {
   }
 }
 
+// clang-format off
 void rot_x(float theta) {
   double rot_x[] = {
-      1,
-      0,
-      0,
-      0, //
-      0,
-      cos(deg2deg(theta)),
-      sin(deg2deg(theta)),
-      0, //
-      0,
-      -sin(deg2deg(theta)),
-      cos(deg2deg(theta)),
-      0, //
-      0,
-      0,
-      0,
-      1, //
+      1, 0, 0, 0, //
+      0, cos(deg2deg(theta)), sin(deg2deg(theta)), 0, //
+      0, -sin(deg2deg(theta)), cos(deg2deg(theta)), 0, //
+      0, 0, 0, 1, //
   };
-
   glMultMatrixd(rot_x);
 }
 void rot_y(float theta) {
   double rot_y[] = {
-      cos(deg2deg(theta)),
-      0,
-      -sin(deg2deg(theta)),
-      0, //
-      0,
-      1,
-      0,
-      0, //
-      sin(deg2deg(theta)),
-      0,
-      cos(deg2deg(theta)),
-      0, //
-      0,
-      0,
-      0,
-      1, //
+      cos(deg2deg(theta)), 0, -sin(deg2deg(theta)), 0, //
+      0, 1, 0, 0, //
+      sin(deg2deg(theta)), 0, cos(deg2deg(theta)), 0, //
+      0, 0, 0, 1, //
   };
   glMultMatrixd(rot_y);
 }
 void rot_z(float theta) {
   double rot_z[] = {
-      cos(deg2deg(theta)),
-      -sin(deg2deg(theta)),
-      0,
-      0, //
-      sin(deg2deg(theta)),
-      cos(deg2deg(theta)),
-      0,
-      0, //
-      0,
-      0,
-      1,
-      0, //
-      0,
-      0,
-      0,
-      1, //
+      cos(deg2deg(theta)), -sin(deg2deg(theta)), 0, 0, //
+      sin(deg2deg(theta)), cos(deg2deg(theta)), 0, 0, //
+      0, 0, 1, 0, //
+      0, 0, 0, 1, //
   };
   glMultMatrixd(rot_z);
 }
+// clang-format on
 
 struct Color {
   float r, g, b;
@@ -230,8 +172,13 @@ Color RandomColor() {
 }
 
 int main(int argc, char **argv) {
-  // int err = load_model("../assets/octahedron.obj", m);
-  int err = load_model("../assets/gourd.obj", m);
+  int err;
+  if (argc == 2) {
+    err = load_model(argv[1], m);
+  } else {
+    printf("loading default model\n");
+    err = load_model("../assets/octahedron.obj", m);
+  }
 
   if (err != 0) {
     return 1;
@@ -239,7 +186,12 @@ int main(int argc, char **argv) {
 
   colors.reserve(m.faces.size());
   for (std::size_t i = 0; i < m.faces.size(); ++i) {
-    Color c = RandomColor();
+    Color c;
+    if (false) {
+      c = RandomColor();
+    } else {
+      c = {1, 1, 1};
+    }
     colors.push_back(c);
   }
 
@@ -249,9 +201,10 @@ int main(int argc, char **argv) {
   glutInitWindowPosition(600, 80);
   glutCreateWindow("Simple Triangle");
 
-  glutCreateMenu(MenuCallback);
-  glutAddMenuEntry("GL_SMOOTH", 1);
-  glutAddMenuEntry("GL_FLAT", 2);
+  glutCreateMenu(DisplayTypeMenuCallback);
+  glutAddMenuEntry("Point", DisplayType::Point);
+  glutAddMenuEntry("Line", DisplayType::Line);
+  glutAddMenuEntry("Face", DisplayType::Face);
   glutAttachMenu(GLUT_RIGHT_BUTTON);
 
   glutSpecialFunc(SpecialKeyHandler);
@@ -272,6 +225,60 @@ void ChangeSize(int w, int h) {
   glOrtho(-10, 10, -10, 10, -10, 100);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
+}
+
+void DrawPoint() {
+  glPointSize(5);
+  glBegin(GL_POINTS);
+  for (const auto &v : m.vertices) {
+    glColor3f(1, 1, 0);
+    glVertex3f(v.x, v.y, v.z);
+  }
+  glEnd();
+}
+
+void DrawLine() {
+  int index = 0;
+  glBegin(GL_LINES);
+
+  for (const auto &f : m.faces) {
+    glColor3f(colors[index].r, colors[index].g, colors[index].b);
+    index++;
+
+    const auto p0 = m.vertices[f.p0 - 1];
+    const auto p1 = m.vertices[f.p1 - 1];
+    const auto p2 = m.vertices[f.p2 - 1];
+
+    glVertex3f(p0.x, p0.y, p0.z);
+    glVertex3f(p1.x, p1.y, p1.z);
+
+    glVertex3f(p0.x, p0.y, p0.z);
+    glVertex3f(p2.x, p2.y, p2.z);
+
+    glVertex3f(p1.x, p1.y, p1.z);
+    glVertex3f(p2.x, p2.y, p2.z);
+  }
+  glEnd();
+}
+
+void DrawFace() {
+  int index = 0;
+  glBegin(GL_TRIANGLES);
+
+  for (const auto &f : m.faces) {
+    glColor3f(colors[index].r, colors[index].g, colors[index].b);
+    index++;
+
+    const auto p0 = m.vertices[f.p0 - 1];
+    glVertex3f(p0.x, p0.y, p0.z);
+
+    const auto p1 = m.vertices[f.p1 - 1];
+    glVertex3f(p1.x, p1.y, p1.z);
+
+    const auto p2 = m.vertices[f.p2 - 1];
+    glVertex3f(p2.x, p2.y, p2.z);
+  }
+  glEnd();
 }
 
 void RenderScene() {
@@ -328,71 +335,22 @@ void RenderScene() {
   rot_z(-asin(ux));
   glMultMatrixd(scale);
 
-  int index = 0;
-  for (const auto &f : m.faces) {
-    glBegin(GL_TRIANGLES);
-
-    glColor3f(colors[index].r, colors[index].g, colors[index].b);
-    index++;
-
-    const auto p0 = m.vertices[f.p0 - 1];
-    glVertex3f(p0.x, p0.y, p0.z);
-
-    const auto p1 = m.vertices[f.p1 - 1];
-    glVertex3f(p1.x, p1.y, p1.z);
-
-    const auto p2 = m.vertices[f.p2 - 1];
-    glVertex3f(p2.x, p2.y, p2.z);
-    glEnd();
+  switch (dt) {
+  case DisplayType::Point:
+    DrawPoint();
+    break;
+  case DisplayType::Line:
+    DrawLine();
+    break;
+  case DisplayType::Face:
+    DrawFace();
+    break;
   }
-  // glBegin(GL_TRIANGLES);
-  // // glColor3f(1,1,0);
-  // glTexCoord2f(0.5f, 0.0f);
-  // glVertex3fv(PRYAMID_POINTS[0]);
-  // glTexCoord2f(0.0f, 1.0f);
-  // glVertex3fv(PRYAMID_POINTS[1]);
-  // glTexCoord2f(1.0f, 1.0f);
-  // glVertex3fv(PRYAMID_POINTS[2]);
-  // glEnd();
-  // glBegin(GL_TRIANGLES);
-  // // glColor3f(0,1,1);
-  // glTexCoord2f(0.5f, 0.0f);
-  // glVertex3fv(PRYAMID_POINTS[0]);
-  // glTexCoord2f(0.0f, 1.0f);
-  // glVertex3fv(PRYAMID_POINTS[2]);
-  // glTexCoord2f(1.0f, 1.0f);
-  // glVertex3fv(PRYAMID_POINTS[3]);
-  // glEnd();
-  // glBegin(GL_TRIANGLES);
-  // // glColor3f(1,0,1);
-  // glTexCoord2f(0.5f, 0.0f);
-  // glVertex3fv(PRYAMID_POINTS[0]);
-  // glTexCoord2f(0.0f, 1.0f);
-  // glVertex3fv(PRYAMID_POINTS[3]);
-  // glTexCoord2f(1.0f, 1.0f);
-  // glVertex3fv(PRYAMID_POINTS[4]);
-  // glEnd();
-  // glBegin(GL_TRIANGLES);
-  // // glColor3f(1,0,0);
-  // glTexCoord2f(0.5f, 0.0f);
-  // glVertex3fv(PRYAMID_POINTS[0]);
-  // glTexCoord2f(0.0f, 1.0f);
-  // glVertex3fv(PRYAMID_POINTS[4]);
-  // glTexCoord2f(1.0f, 1.0f);
-  // glVertex3fv(PRYAMID_POINTS[1]);
-  // glEnd();
 
   glutSwapBuffers();
 }
 
-void MenuCallback(int value) {
-  switch (value) {
-  case 1:
-    glShadeType = GL_SMOOTH;
-    break;
-  case 2:
-    glShadeType = GL_FLAT;
-    break;
-  }
+void DisplayTypeMenuCallback(int value) {
+  dt = static_cast<DisplayType>(value);
   glutPostRedisplay();
 }
