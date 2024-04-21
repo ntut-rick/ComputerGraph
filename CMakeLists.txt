@@ -12,6 +12,7 @@ set(INCLUDE_FILES
     # ${INCLUDE_DIR}/Transform.cpp
     ${INCLUDE_DIR}/NiuBiObject.hpp
     ${INCLUDE_DIR}/stb_image.h
+    ${INCLUDE_DIR}/myglTransform.h
 )
 set(SRC_FILES
     # ${SRC_DIR}/Transform.cpp

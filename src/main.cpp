@@ -17,6 +17,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#define IMPL_TRANSFORM_YOURSELF
+#include "myglTransform.h"
+
 enum class ControlMode {
   OBJECT_ROTATE,
   CAMERA_UP,
@@ -213,18 +216,28 @@ void RenderScene(void) {
   drawXYZaxes();
 
   glMultMatrixf(objRotMatrix);
+  // TODO: objTransMatrix
+  // glMultMatrixf(objTransMatrix);
 
   drawSelectedOjbect();
 
   glutSwapBuffers();
 }
 
-void my_magic_rotate(GLfloat *m, GLfloat xangle, GLfloat yangle) {
+void my_magic_rotate(
+  GLfloat *m,
+  GLfloat angle,
+  GLfloat x,
+  GLfloat y,
+  GLfloat z
+) {
   glMatrixMode(GL_MODELVIEW);
-  glLoadMatrixf(m);
-  glRotatef(xangle, 1,0,0);
-  glRotatef(yangle, 0,1,0);
+  glPushMatrix();
+  glLoadIdentity();
+  glRotatef(angle, x, y, z);
+  glMultMatrixf(m);
   glGetFloatv(GL_MODELVIEW_MATRIX, m);
+  glPopMatrix();
 }
 
 int last_x, last_y;
@@ -255,15 +268,14 @@ void MouseDrag(int x, int y) {
   // yangle += dx;
   // printf("xa:%f, ya:%f\\", xangle, yangle);
   // printf("moude delta = %d %d\n", dx, dy);
-  my_magic_rotate(objRotMatrix, dy, dx);
-
-  for (int i = 0; i < 16; ++i) {
-    std::cout << objRotMatrix[i] << " ";
-    if ((i + 1) % 4 == 0) {
-        std::cout << std::endl;
-    }
-  }
-  
+  my_magic_rotate(objRotMatrix, dy, 1, 0, 0);
+  my_magic_rotate(objRotMatrix, dx, 0, 1, 0);
+  // for (int i = 0; i < 16; ++i) {
+  //   std::cout << objRotMatrix[i] << " ";
+  //   if ((i + 1) % 4 == 0) {
+  //       std::cout << std::endl;
+  //   }
+  // }
   last_x = x;
   last_y = y;
   glutPostRedisplay();
