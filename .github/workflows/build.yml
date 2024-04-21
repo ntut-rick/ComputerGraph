@@ -16,12 +16,12 @@ jobs:
         compiler: [{ cc: gcc, cxx: g++ }, { cc: clang, cxx: clang++ }]
         build_type: [Release]
         binary: [linux-binary]
-        output: [build/cg-course]
+        output: [build/ComputerGraph]
         include:
           - os: windows-latest
             build_type: Release
             binary: windows-binary
-            output: build/cg-course.exe
+            output: build/Release/ComputerGraph.exe
 
     steps:
       - if: matrix.os == 'ubuntu-latest'
@@ -55,7 +55,6 @@ jobs:
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build build --target ComputerGraph --config ${{ matrix.build_type }}
-        
 
       - name: Uploading Binary
         uses: actions/upload-artifact@v3
