@@ -3,6 +3,7 @@
 #include <float.h>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include "global.h"
