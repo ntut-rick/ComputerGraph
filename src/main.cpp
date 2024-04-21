@@ -13,13 +13,12 @@
 #include "pryamid.h"
 #include "stb_image.h"
 
-#include <random>
-
 #include "loader.hpp"
 
 void ChangeSize(int, int);
 void RenderScene();
 void DisplayTypeMenuCallback(int);
+void ColorModeMenuCallback(int);
 
 enum DisplayType {
   Point,
@@ -28,6 +27,13 @@ enum DisplayType {
 };
 
 DisplayType dt = DisplayType::Face;
+
+enum ColorMode {
+  Single,
+  Random,
+};
+
+ColorMode cm = ColorMode::Single;
 
 GLenum glShadeType = GL_SMOOTH;
 float xtrans = 0;
@@ -157,18 +163,29 @@ struct Color {
 };
 
 Model m;
-std::vector<Color> colors;
 
 Color RandomColor() {
-  std::random_device rng;
-  std::default_random_engine e(rng());
-  std::uniform_real_distribution<GLfloat> dist(0.1F, 1.0F);
+  const auto r = [] {
+    return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+  };
 
   return Color{
-      dist(e),
-      dist(e),
-      dist(e),
+      r(),
+      r(),
+      r(),
   };
+}
+
+Color GetColor() {
+  if (cm == ColorMode::Single) {
+    return Color{
+        1,
+        1,
+        1,
+    };
+  } else {
+    return RandomColor();
+  }
 }
 
 int main(int argc, char **argv) {
@@ -184,27 +201,25 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  colors.reserve(m.faces.size());
-  for (std::size_t i = 0; i < m.faces.size(); ++i) {
-    Color c;
-    if (false) {
-      c = RandomColor();
-    } else {
-      c = {1, 1, 1};
-    }
-    colors.push_back(c);
-  }
-
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutInitWindowSize(800, 800);
   glutInitWindowPosition(600, 80);
   glutCreateWindow("Simple Triangle");
 
-  glutCreateMenu(DisplayTypeMenuCallback);
+  auto dtMenu = glutCreateMenu(DisplayTypeMenuCallback);
   glutAddMenuEntry("Point", DisplayType::Point);
   glutAddMenuEntry("Line", DisplayType::Line);
   glutAddMenuEntry("Face", DisplayType::Face);
+
+  auto colorMenu = glutCreateMenu(ColorModeMenuCallback);
+  glutAddMenuEntry("Single", ColorMode::Single);
+  glutAddMenuEntry("Random", ColorMode::Random);
+
+  glutCreateMenu(nullptr);
+  glutAddSubMenu("Display Type", dtMenu);
+  glutAddSubMenu("Color Mode", colorMenu);
+
   glutAttachMenu(GLUT_RIGHT_BUTTON);
 
   glutSpecialFunc(SpecialKeyHandler);
@@ -231,19 +246,20 @@ void DrawPoint() {
   glPointSize(5);
   glBegin(GL_POINTS);
   for (const auto &v : m.vertices) {
-    glColor3f(1, 1, 0);
+    Color c = GetColor();
+    glColor3f(c.r, c.g, c.b);
+
     glVertex3f(v.x, v.y, v.z);
   }
   glEnd();
 }
 
 void DrawLine() {
-  int index = 0;
   glBegin(GL_LINES);
 
   for (const auto &f : m.faces) {
-    glColor3f(colors[index].r, colors[index].g, colors[index].b);
-    index++;
+    Color c = GetColor();
+    glColor3f(c.r, c.g, c.b);
 
     const auto p0 = m.vertices[f.p0 - 1];
     const auto p1 = m.vertices[f.p1 - 1];
@@ -262,12 +278,11 @@ void DrawLine() {
 }
 
 void DrawFace() {
-  int index = 0;
   glBegin(GL_TRIANGLES);
 
   for (const auto &f : m.faces) {
-    glColor3f(colors[index].r, colors[index].g, colors[index].b);
-    index++;
+    Color c = GetColor();
+    glColor3f(c.r, c.g, c.b);
 
     const auto p0 = m.vertices[f.p0 - 1];
     glVertex3f(p0.x, p0.y, p0.z);
@@ -335,6 +350,7 @@ void RenderScene() {
   rot_z(-asin(ux));
   glMultMatrixd(scale);
 
+  srand(69420);
   switch (dt) {
   case DisplayType::Point:
     DrawPoint();
@@ -352,5 +368,10 @@ void RenderScene() {
 
 void DisplayTypeMenuCallback(int value) {
   dt = static_cast<DisplayType>(value);
+  glutPostRedisplay();
+}
+
+void ColorModeMenuCallback(int value) {
+  cm = static_cast<ColorMode>(value);
   glutPostRedisplay();
 }
