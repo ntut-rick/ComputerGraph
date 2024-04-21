@@ -1,3 +1,5 @@
 #include "global.h"
 
-float max_vertex;
+#include "float.h"
+
+float max_vertex = FLT_MIN;
