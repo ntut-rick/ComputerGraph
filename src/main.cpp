@@ -19,6 +19,7 @@ void ChangeSize(int, int);
 void RenderScene();
 void DisplayTypeMenuCallback(int);
 void ColorModeMenuCallback(int);
+void ModelSelectMenuCallback(int);
 
 enum DisplayType {
   Point,
@@ -34,6 +35,13 @@ enum ColorMode {
 };
 
 ColorMode cm = ColorMode::Single;
+
+enum ActiveModel {
+  Gourd,
+  Octahedron,
+  Teapot,
+  Teddy,
+};
 
 GLenum glShadeType = GL_SMOOTH;
 float xtrans = 0;
@@ -216,9 +224,16 @@ int main(int argc, char **argv) {
   glutAddMenuEntry("Single", ColorMode::Single);
   glutAddMenuEntry("Random", ColorMode::Random);
 
+  auto modelMenu = glutCreateMenu(ModelSelectMenuCallback);
+  glutAddMenuEntry("Gourd", ActiveModel::Gourd);
+  glutAddMenuEntry("Octahedron", ActiveModel::Octahedron);
+  glutAddMenuEntry("Teapot", ActiveModel::Teapot);
+  glutAddMenuEntry("Teddy", ActiveModel::Teddy);
+
   glutCreateMenu(nullptr);
   glutAddSubMenu("Display Type", dtMenu);
   glutAddSubMenu("Color Mode", colorMenu);
+  glutAddSubMenu("Active Model", modelMenu);
 
   glutAttachMenu(GLUT_RIGHT_BUTTON);
 
@@ -374,4 +389,21 @@ void DisplayTypeMenuCallback(int value) {
 void ColorModeMenuCallback(int value) {
   cm = static_cast<ColorMode>(value);
   glutPostRedisplay();
+}
+
+void ModelSelectMenuCallback(int value) {
+  switch (static_cast<ActiveModel>(value)) {
+  case Gourd:
+    load_model("../assets/gourd.obj", m);
+    break;
+  case Octahedron:
+    load_model("../assets/octahedron.obj", m);
+    break;
+  case Teapot:
+    load_model("../assets/teapot.obj", m);
+    break;
+  case Teddy:
+    load_model("../assets/teddy.obj", m);
+    break;
+  }
 }
