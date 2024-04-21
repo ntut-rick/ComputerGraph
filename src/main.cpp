@@ -14,43 +14,46 @@
 
 #include "NiuBiObject.hpp"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 enum class ControlMode {
-  CAMERAMOVE,
-  LOOKATPOINTMOVE,
-  TRANSLATE,
-  ROTATE,
-  SCALE,
+  OBJECT_ROTATE,
+  CAMERA_UP,
+  CAMERA_POS,
 };
+ControlMode current_control_mode = ControlMode::OBJECT_ROTATE;
 
-enum class CurrentControlAxis {
-  X,
-  Y,
-  Z,
-};
-ControlMode current_control_mode = ControlMode::CAMERAMOVE;
+// enum class CurrentControlAxis {
+//   X, Y, Z,
+// };
 
-void ChangeSize(int, int);
-void RenderScene(void);
-void MenuCallback(int);
-void ColorModeMenuCallback(int);
-void OnKeyBoardPress(unsigned char, int, int);
-void MousePress(int button, int state, int x, int y);
-void RenderModeMenuCallback(int);
-void RotationModeCallback(int);
+static void RenderScene(void);
+static void ChangeSize(int, int);
 
-void MouseDrag(int, int);
+static void OnKeyBoardPress(unsigned char, int, int);
 
-std::array<float, 3> mouseViewport1WorldPos1{10, 10, 0};
-std::array<float, 3> mouseViewport1WorldPos2{10, 10, 0};
-std::array<int, 6> ortho_settings = {-10, 10, -10, 10, -50, 50};
-std::array<double, 3> camera_pos = {0, 0, 10};
-std::array<double, 3> camera_look_at = {0, 0, 0};
+static void MousePress(int, int, int, int);
+static void MouseDrag(int, int);
+static void mouseWheel(int, int, int, int);
 
-bool mousepoint01Status = false;
+static int BuildManu();
+static void MenuCallback(int);
+static void ColorModeMenuCallback(int);
+static void RenderModeMenuCallback(int);
+static void RotationModeCallback(int);
 
-///
+static void LoadJykuoTexture();
 
-int BuildManu();
+// bool mousepoint01Status = false;
+// struct { GLfloat x,y,z; } mouseViewport1WorldPos1 = {10, 10, 0};
+// struct { GLfloat x,y,z; } mouseViewport1WorldPos2 = {10, 10, 0};
+
+// fuck windows >>> https://cplusplus.com/forum/general/12435/
+struct { GLfloat left, right, bottom, top, zNear, zFar; }
+ortho_settings = {-10, 10, -10, 10, -100, 100};
+struct { GLfloat x,y,z; } camera_pos = {0, 0, 10};
+struct { GLfloat x,y,z; } camera_look_at = {0, 0, 0};
 
 std::vector<NiuBiObject> loaded_objs;
 int selected_obj_index = 0;
@@ -58,13 +61,14 @@ int selected_obj_index = 0;
 GLfloat xangle = 0;
 GLfloat yangle = 0;
 
-GLenum render_mode = GL_LINES;
+GLenum render_mode = GL_TRIANGLES;
 
-std::array<int, 2> windowSize{800, 800};
+struct { int width, height; } window_size = {400, 400};
+
 int main(int argc, char **argv) {
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-  glutInitWindowSize(400, 400);
+  glutInitWindowSize(window_size.width, window_size.height);
   glutInitWindowPosition(0, 0);
   glutCreateWindow("Niu-Bi de CG Midterm Work");
 
@@ -82,26 +86,50 @@ int main(int argc, char **argv) {
   }
   glutAttachMenu(GLUT_RIGHT_BUTTON);
 
+  LoadJykuoTexture();
+
   glutReshapeFunc(ChangeSize);
   glutKeyboardFunc(OnKeyBoardPress);
+
   glutMouseFunc(MousePress);
   glutMotionFunc(MouseDrag);
+  glutMouseWheelFunc(mouseWheel);
+
   glutDisplayFunc(RenderScene);
   glutMainLoop(); // http://www.programmer-club.com.tw/ShowSameTitleN/opengl/2288.html
   return 0;
 }
 void ChangeSize(int w, int h) {
-  printf("Window Size= %d X %d\n", w, h);
-  glViewport(0, 0, w, h);
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  glOrtho(ortho_settings[0], ortho_settings[1], ortho_settings[2],
-          ortho_settings[3], ortho_settings[4], ortho_settings[5]);
-  glMatrixMode(GL_MODELVIEW);
-  gluLookAt(camera_pos[0], camera_pos[1], camera_pos[2],
-            camera_look_at[0], camera_look_at[1], camera_look_at[2],
-            0, 1, 0);
-  glLoadIdentity();
+  window_size = {w, h};
+  // reference: https://gist.github.com/insaneyilin/9320e8263b29e3c172c4f5963b8db693
+  // glMatrixMode(GL_PROJECTION);
+  // glLoadIdentity();
+  // glFrustum(-1.0, 1.0, -1.0, 1.0, 1.5, 20.0);
+  // glMatrixMode(GL_MODELVIEW);
+  glutPostRedisplay();
+}
+
+void LoadJykuoTexture() {
+  GLuint texture;
+  int width, height, channels;
+  unsigned char* imageData = stbi_load("./kjy01601.png", &width, &height, &channels, 0);
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  if(imageData) {
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+      width, height,
+      0, GL_RGB, GL_UNSIGNED_BYTE, imageData);
+      stbi_image_free(imageData);
+  } else {
+    printf("Can't found jykuo :(");
+  }
+  
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, texture);
 }
 
 void drawXYZaxes(void) {
@@ -134,16 +162,53 @@ void randomcolor(void) {
 }
 void (*setcolorfuncion)(void) = singlecolor;
 
+void drawSelectedOjbect(void) {
+  if (selected_obj_index >= loaded_objs.size()) {
+    return;
+  }
+  auto curret_obj = loaded_objs[selected_obj_index];
+  // srand(7414);
+  for(auto face : curret_obj.faces) {
+    setcolorfuncion();
+    glBegin(render_mode);
+      // Deprecated uv setup
+      // glTexCoord2f(.5f, .0f); glVertex3fv(curret_obj.vertices[face[0]].data());
+      // glTexCoord2f(.35f, .6f); glVertex3fv(curret_obj.vertices[face[1]].data());
+      // glTexCoord2f(.65f, .6f); glVertex3fv(curret_obj.vertices[face[2]].data());
+      glTexCoord2f(.5f, .55f); glVertex3fv(curret_obj.vertices[face[0]].data());
+      glTexCoord2f(.3f, .3f); glVertex3fv(curret_obj.vertices[face[1]].data());
+      glTexCoord2f(.7f, .3f); glVertex3fv(curret_obj.vertices[face[2]].data());
+    glEnd();
+    // Debugging black lines
+    // glColor3f(0,0,0);
+    // glBegin(GL_LINE_LOOP);
+    //   glVertex3fv(curret_obj.vertices[face[0]].data());
+    //   glVertex3fv(curret_obj.vertices[face[1]].data());
+    //   glVertex3fv(curret_obj.vertices[face[2]].data());
+    // glEnd();
+  }
+}
+
 void RenderScene(void) {
   glClearColor(0, 0, 0, 1.0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+  // init the viewport
+  glViewport(0, 0, window_size.width, window_size.height);
+
+  // glMatrixMode(GL_PROJECTION);
+  // glLoadIdentity();
+  // glOrtho(ortho_settings.left, ortho_settings.right,
+  //         ortho_settings.bottom, ortho_settings.top,
+  //         ortho_settings.zNear, ortho_settings.zFar);
+
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
   // TODO: we should calculate the up vector, but now I am lazy to do it.
-  gluLookAt(camera_pos[0], camera_pos[1], camera_pos[2],
-            camera_look_at[0], camera_look_at[1], camera_look_at[2],
-            0, 1, 0);
+  gluLookAt(
+    camera_pos.x, camera_pos.y, camera_pos.z,
+    camera_look_at.x, camera_look_at.y, camera_look_at.z,
+    0, 1, 0);
   glEnable(GL_DEPTH_TEST);
 
   drawXYZaxes();
@@ -151,24 +216,7 @@ void RenderScene(void) {
   glRotatef(xangle, 1,0,0);
   glRotatef(yangle, 0,1,0);
 
-  if (selected_obj_index < loaded_objs.size()) {
-    auto curret_obj = loaded_objs[selected_obj_index];
-    for(auto face : curret_obj.faces) {
-      glColor3f(1.0f, 1.0f, 1.0f);
-      setcolorfuncion();
-      glBegin(render_mode);
-        glVertex3fv(curret_obj.vertices[face[0]].data());
-        glVertex3fv(curret_obj.vertices[face[1]].data());
-        glVertex3fv(curret_obj.vertices[face[2]].data());
-      glEnd();
-      // glColor3f(0,0,0);
-      // glBegin(GL_LINE_LOOP);
-      //   glVertex3fv(curret_obj.vertices[face[0]].data());
-      //   glVertex3fv(curret_obj.vertices[face[1]].data());
-      //   glVertex3fv(curret_obj.vertices[face[2]].data());
-      // glEnd();
-    }
-  }
+  drawSelectedOjbect();
 
   glutSwapBuffers();
 }
@@ -196,8 +244,6 @@ void MousePress(int button, int state, int x, int y) {
   glutPostRedisplay();
 }
 void MouseDrag(int x, int y) {
-  // static int last_x = x;
-  // static int last_y = y;
   const int dx = x - last_x;
   const int dy = y - last_y;
   xangle += dy;
@@ -206,6 +252,23 @@ void MouseDrag(int x, int y) {
   // printf("moude delta = %d %d\n", dx, dy);
   last_x = x;
   last_y = y;
+  glutPostRedisplay();
+}
+void mouseWheel(int button, int dir, int x, int y)
+{
+  static float scale = 10;
+  if (dir > 0) {
+    camera_pos.z /= 1.2;
+    scale /= 1.2;
+  } else {
+    camera_pos.z *= 1.2;
+    scale *= 1.2;
+  }
+  // ortho_settings.left = -1*scale;
+  // ortho_settings.right = 1*scale;
+  // ortho_settings.bottom = -1*scale;
+  // ortho_settings.top = 1*scale;
+  printf("z=%lf\n", scale);
   glutPostRedisplay();
 }
 
@@ -243,50 +306,22 @@ void RenderModeMenuCallback(int value) {
 }
 
 void RotationModeCallback(int value) {
-//  auto transform = current_display_obj->get_transform();
-//  switch (value) {
-//  case 1: {
-//    transform->set_rotation_type(Transform::RotationType::EULER);
-//    break;
-//  }
-//  case 2: {
-//    transform->set_rotation_type(Transform::RotationType::ANYAXIS);
-//    break;
-//  }
-//  }
-//  glutPostRedisplay();
-//}
-//
-//void print4mat(GLfloat array[16]) {
-//  for (int i = 0; i < 4; i++) {
-//    for (int j = 0; j < 4; j++) {
-//      printf("%-3f ", array[4 * j + i]);
-//    }
-//    printf("\n");
-//  }
+  //TODO: RotationModeCallback
+  printf("TODO: RotationModeCallback called\n");
 }
 
-// fuck the switch hell, it's so ugly, i know how to fix it, but I'm too lazy,
-// some one help me to separate to self Input class.
 void OnKeyBoardPress(unsigned char key, int x, int y) {
-//  if (current_display_obj == nullptr) {
-//    return;
-//  }
-//
-//  auto transform = current_display_obj->get_transform();
-//
-  if (key == ' ') {
+  switch (key) {
+  case ' ':
     xangle = 0;
     yangle = 0;
     // current_display_obj->set_transform_to_target({0, 0, 0}, ortho_settings);
     // transform->set_rotation_by_euler({0, 0, 0});
     // transform->set_rotation_by_axis(0, {0, 0, 1});
-    // camera_pos = {0, 0, 10};
-    // camera_look_at = {0, 0, 0};
-    // glutPostRedisplay();
-    // return;
+    camera_pos = {0, 0, 10};
+    camera_look_at = {0, 0, 0};
+    break;
   }
-//
   glutPostRedisplay();
 }
 

@@ -9,13 +9,12 @@ add_subdirectory(thirdparty/freeglut)
 
 # this two line don't work new.
 set(INCLUDE_FILES
-#    ${INCLUDE_DIR}/OBJLoader.hpp
+    # ${INCLUDE_DIR}/Transform.cpp
     ${INCLUDE_DIR}/NiuBiObject.hpp
-#    ${INCLUDE_DIR}/Transform.hpp
+    ${INCLUDE_DIR}/stb_image.h
 )
 set(SRC_FILES
-#    ${SRC_DIR}/DrawableObject.cpp
-#    ${SRC_DIR}/Transform.cpp
+    # ${SRC_DIR}/Transform.cpp
 )
 
 add_executable(${PROJECT_NAME}
@@ -28,5 +27,3 @@ target_link_libraries(${PROJECT_NAME} ${OPENGL_gl_LIBRARY} ${OPENGL_glu_LIBRARY}
 target_link_libraries(${PROJECT_NAME} freeglut_static)
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty/freeglut/include/GL)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
-
-target_compile_definitions(${PROJECT_NAME} PRIVATE RESOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/TestFile")
