@@ -1,4 +1,4 @@
-#ifdef IMPL_TRANSFORM_YOURSELF
+#ifdef MY_GL_TRANSFORM_IMPLEMENTATION
 #ifdef glRotatef
 #undef glRotatef
 #endif
@@ -53,4 +53,4 @@ void glScalef(GLfloat x, GLfloat y, GLfloat z) {
     glMultMatrixf(m);
 }
 
-#endif /* IMPL_TRANSFORM_YOURSELF */
+#endif /* MY_GL_TRANSFORM_IMPLEMENTATION */

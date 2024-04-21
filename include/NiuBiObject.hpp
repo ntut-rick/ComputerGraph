@@ -19,6 +19,7 @@ using Face = std::array<int, 3>;
 
 class NiuBiObject {
 public:
+  float scale;
   std::vector<Vertex> vertices;
   std::vector<Face> faces;
   static NiuBiObject fromFile(const std::string &filepath) {
@@ -30,6 +31,8 @@ public:
     NiuBiObject obj;
 
     std::string line{};
+    GLfloat max_b = std::numeric_limits<GLfloat>::min();
+    GLfloat min_b = std::numeric_limits<GLfloat>::max();
     while (getline(obj_file, line)) {
       if (line.empty()) {
         continue;
@@ -38,6 +41,12 @@ public:
         case 'v': {
           float x, y, z;
           sscanf(line.c_str(), "v %f %f %f", &x, &y, &z);
+          min_b = std::min(x, min_b);
+          min_b = std::min(y, min_b);
+          min_b = std::min(z, min_b);
+          max_b = std::max(x, max_b);
+          max_b = std::max(y, max_b);
+          max_b = std::max(z, max_b);
           obj.vertices.push_back({x, y, z});
         } break;
         case 'f': {
@@ -47,7 +56,8 @@ public:
         } break;
       } // switch
     } // while
-
+    obj.scale = 20.0f / (max_b-min_b);
+    printf("%s scaler: %f\n", filepath, obj.scale);
     return obj;
   }
 };

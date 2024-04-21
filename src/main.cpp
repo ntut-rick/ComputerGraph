@@ -1,31 +1,27 @@
-#include "NiuBiObject.hpp"
-#include "Transform.hpp"
 #include <array>
+#include <cstdio>
 #include <filesystem>
 #include <iostream>
 #include <memory>
 #include <ostream>
-#include <stdio.h>
+#include <vector>
 
 /*** freeglut***/
 #include <freeglut.h>
 #include <freeglut_std.h>
-#include <vector>
-
-#include "NiuBiObject.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-
-#define IMPL_TRANSFORM_YOURSELF
+#include "NiuBiObject.hpp"
+// #define MY_GL_TRANSFORM_IMPLEMENTATION
 #include "myglTransform.h"
 
-enum class ControlMode {
-  OBJECT_ROTATE,
-  CAMERA_UP,
-  CAMERA_POS,
-};
-ControlMode current_control_mode = ControlMode::OBJECT_ROTATE;
+// enum class ControlMode {
+//   OBJECT_ROTATE,
+//   CAMERA_UP,
+//   CAMERA_POS,
+// };
+// ControlMode current_control_mode = ControlMode::OBJECT_ROTATE;
 
 // enum class CurrentControlAxis {
 //   X, Y, Z,
@@ -52,6 +48,8 @@ static void LoadJykuoTexture();
 // struct { GLfloat x,y,z; } mouseViewport1WorldPos1 = {10, 10, 0};
 // struct { GLfloat x,y,z; } mouseViewport1WorldPos2 = {10, 10, 0};
 
+struct { int width, height; } window_size = {400, 400};
+
 // fuck windows >>> https://cplusplus.com/forum/general/12435/
 struct { GLfloat left, right, bottom, top, zNear, zFar; }
 ortho_settings = {-10, 10, -10, 10, -100, 100};
@@ -61,13 +59,9 @@ struct { GLfloat x,y,z; } camera_look_at = {0, 0, 0};
 std::vector<NiuBiObject> loaded_objs;
 int selected_obj_index = 0;
 
-// GLfloat xangle = 0;
-// GLfloat yangle = 0;
 GLfloat objRotMatrix[16] = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
-
 GLenum render_mode = GL_TRIANGLES;
-
-struct { int width, height; } window_size = {400, 400};
+float zoomingScaler = 1;
 
 int main(int argc, char **argv) {
   glutInit(&argc, argv);
@@ -200,6 +194,10 @@ void RenderScene(void) {
   glViewport(0, 0, window_size.width, window_size.height);
 
   glMatrixMode(GL_PROJECTION);
+  ortho_settings.left = -10/zoomingScaler;
+  ortho_settings.right = 10/zoomingScaler;
+  ortho_settings.bottom = -10/zoomingScaler;
+  ortho_settings.top = 10/zoomingScaler;
   glLoadIdentity();
   glOrtho(ortho_settings.left, ortho_settings.right, ortho_settings.bottom, ortho_settings.top,
           ortho_settings.zNear, ortho_settings.zFar);
@@ -264,43 +262,32 @@ void MousePress(int button, int state, int x, int y) {
 void MouseDrag(int x, int y) {
   const int dx = x - last_x;
   const int dy = y - last_y;
-  // xangle += dy;
-  // yangle += dx;
-  // printf("xa:%f, ya:%f\\", xangle, yangle);
   // printf("moude delta = %d %d\n", dx, dy);
-  my_magic_rotate(objRotMatrix, dy, 1, 0, 0);
-  my_magic_rotate(objRotMatrix, dx, 0, 1, 0);
-  // for (int i = 0; i < 16; ++i) {
-  //   std::cout << objRotMatrix[i] << " ";
-  //   if ((i + 1) % 4 == 0) {
-  //       std::cout << std::endl;
-  //   }
-  // }
+  const float ads_ssensitivity = 0.5 / (zoomingScaler / loaded_objs[selected_obj_index].scale);
+  my_magic_rotate(objRotMatrix, dy*ads_ssensitivity, 1, 0, 0);
+  my_magic_rotate(objRotMatrix, dx*ads_ssensitivity, 0, 1, 0);
   last_x = x;
   last_y = y;
   glutPostRedisplay();
 }
 void mouseWheel(int button, int dir, int x, int y)
 {
-  static float scale = 10;
+  // static float zoomingScaler = 10;
   if (dir > 0) {
     // camera_pos.z /= 1.2;
-    scale /= 1.2;
+    zoomingScaler *= 1.2;
   } else {
     // camera_pos.z *= 1.2;
-    scale *= 1.2;
+    zoomingScaler /= 1.2;
   }
-  ortho_settings.left = -1*scale;
-  ortho_settings.right = 1*scale;
-  ortho_settings.bottom = -1*scale;
-  ortho_settings.top = 1*scale;
-  // printf("z=%lf\n", scale);
+  printf("zoomingScaler=%lf\n", zoomingScaler);
   glutPostRedisplay();
 }
 
 void MenuCallback(int value) {
   selected_obj_index = value-1;
   printf("selected_obj_index = %d\n", selected_obj_index);
+  zoomingScaler = loaded_objs[selected_obj_index].scale;
   glutPostRedisplay();
 }
 void ColorModeMenuCallback(int value) {
@@ -336,8 +323,6 @@ void RotationModeCallback(int value) {
 void OnKeyBoardPress(unsigned char key, int x, int y) {
   switch (key) {
   case ' ':
-    // xangle = 0;
-    // yangle = 0;
     // current_display_obj->set_transform_to_target({0, 0, 0}, ortho_settings);
     // transform->set_rotation_by_euler({0, 0, 0});
     // transform->set_rotation_by_axis(0, {0, 0, 1});
