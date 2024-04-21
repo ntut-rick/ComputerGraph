@@ -22,7 +22,7 @@ add_executable(${PROJECT_NAME}
     ${CMAKE_SOURCE_DIR}/thirdparty/tinyobj_loader_c/tinyobj_loader_c.c
 )
 target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} ${OPENGL_glu_LIBRARY})
-target_link_libraries(${PROJECT_NAME} freeglut)
+target_link_libraries(${PROJECT_NAME} freeglut freeglut_static)
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/thirdparty/freeglut/include/GL
     ${CMAKE_SOURCE_DIR}/thirdparty/tinyobj_loader_c/
