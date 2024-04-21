@@ -35,7 +35,7 @@ enum ColorMode {
   Random,
 };
 
-ColorMode cm = ColorMode::Single;
+ColorMode cm = ColorMode::Random;
 
 enum ActiveModel {
   Gourd,
@@ -53,6 +53,8 @@ float xangle = 0;
 float yangle = 0;
 float zangle = 0;
 
+float aangle = 0;
+
 float xscale = 1;
 float yscale = 1;
 float zscale = 1;
@@ -62,6 +64,9 @@ float xdelta = .2f;
 
 float clickx = 1;
 float clicky = 1;
+
+Vertex camera_loc = {0.01, 0.02, 0.1};
+Vertex camera_lookat = {0, 0, 0};
 
 void Loop() {
   // yangle += ydelta;
@@ -102,30 +107,46 @@ void SpecialKeyHandler(int key, int x, int y) {
 void NormalKeyHandler(unsigned char key, int x, int y) {
   switch (key) {
     // clang-format off
-  case 'w': xangle += 0.05f; break;
-  case 'q': xangle -= 0.05f; break;
-  case 's': yangle += 0.05f; break;
-  case 'a': yangle -= 0.05f; break;
-  case 'x': zangle += 0.05f; break;
-  case 'z': zangle -= 0.05f; break;
+  case 'q': xangle += 0.05f; break;
+  case 'Q': xangle -= 0.05f; break;
+  case 'a': yangle += 0.05f; break;
+  case 'A': yangle -= 0.05f; break;
+  case 'z': zangle += 0.05f; break;
+  case 'Z': zangle -= 0.05f; break;
+  case '1': aangle += 0.05f; break;
+  case '!': aangle -= 0.05f; break;
 
-  case 'r': xtrans += 0.1f; break;
-  case 'e': xtrans -= 0.1f; break;
-  case 'f': ytrans += 0.1f; break;
-  case 'd': ytrans -= 0.1f; break;
-  case 'v': ztrans += 0.1f; break;
-  case 'c': ztrans -= 0.1f; break;
+  case 'w': xtrans += 0.1f; break;
+  case 'W': xtrans -= 0.1f; break;
+  case 's': ytrans += 0.1f; break;
+  case 'S': ytrans -= 0.1f; break;
+  case 'x': ztrans += 0.1f; break;
+  case 'X': ztrans -= 0.1f; break;
 
-  case 'y': xscale += 0.1f; break;
-  case 't': xscale -= 0.1f; break;
-  case 'h': yscale += 0.1f; break;
-  case 'g': yscale -= 0.1f; break;
-  case 'n': zscale += 0.1f; break;
-  case 'b': zscale -= 0.1f; break;
+  case 'e': xscale += 0.1f; break;
+  case 'E': xscale -= 0.1f; break;
+  case 'd': yscale += 0.1f; break;
+  case 'D': yscale -= 0.1f; break;
+  case 'c': zscale += 0.1f; break;
+  case 'C': zscale -= 0.1f; break;
+
+  case 'r': camera_loc.x += 0.01f; break;
+  case 'R': camera_loc.x -= 0.01f; break;
+  case 'f': camera_loc.y += 0.01f; break;
+  case 'F': camera_loc.y -= 0.01f; break;
+  case 'v': camera_loc.z += 0.01f; break;
+  case 'V': camera_loc.z -= 0.01f; break;
+
+  case 't': camera_lookat.x += 0.01f; break;
+  case 'T': camera_lookat.x -= 0.01f; break;
+  case 'g': camera_lookat.y += 0.01f; break;
+  case 'G': camera_lookat.y -= 0.01f; break;
+  case 'b': camera_lookat.z += 0.01f; break;
+  case 'B': camera_lookat.z -= 0.01f; break;
   // clang-format on
-  case '1':
+  case ' ':
     xangle = 0;
-    yangle = 45;
+    yangle = 0;
     zangle = 0;
     xtrans = 0;
     ytrans = 0;
@@ -133,6 +154,8 @@ void NormalKeyHandler(unsigned char key, int x, int y) {
     xscale = 1;
     yscale = 1;
     zscale = 1;
+    camera_loc = {0.01, 0.02, 0.1};
+    camera_lookat = {0, 0, 0};
     break;
   }
 }
@@ -318,14 +341,15 @@ void RenderScene() {
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  glOrtho(-max_vertex, max_vertex, -max_vertex, max_vertex, -max_vertex,
-          max_vertex);
+  glOrtho(-max_vertex, max_vertex, -max_vertex, max_vertex, -max_vertex * 10,
+          max_vertex * 10);
 
   glMatrixMode(GL_MODELVIEW);
   glEnable(GL_DEPTH_TEST);
 
   glLoadIdentity();
-  gluLookAt(0.01, 0.02, 0.1, 0, 0, 0, 0, 1, 0);
+  gluLookAt(camera_loc.x, camera_loc.y, camera_loc.y, camera_lookat.x,
+            camera_lookat.y, camera_lookat.z, 0, 1, 0);
   glShadeModel(glShadeType);
 
   glBegin(GL_LINES);
@@ -361,13 +385,21 @@ void RenderScene() {
   double ux = clickx / l;
   double uy = clicky / l;
 
+  // clang-format off
   double scale[] = {
-      xscale, 0, 0, 0, 0, yscale, 0, 0, 0, 0, zscale, 0, 0, 0, 0, 1,
+      xscale, 0,      0, 0, //
+      0,      yscale, 0, 0, //
+      0,      0,      zscale, 0, //
+      0,      0,      0,      1, //
   };
+  // clang-format on
   /* glRotatef(yangle, 0, 1, 0); */
   glMultMatrixd(trans);
+  rot_x(xangle);
+  rot_y(yangle);
+  rot_z(zangle);
   rot_z(asin(ux));
-  rot_y(xangle);
+  rot_y(aangle);
   rot_z(-asin(ux));
   glMultMatrixd(scale);
 
