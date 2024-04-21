@@ -14,9 +14,11 @@ add_subdirectory(thirdparty/freeglut)
 
 add_executable(${PROJECT_NAME}
     ${SRC_DIR}/loader.hpp
+    ${SRC_DIR}/global.h
 
     ${SRC_DIR}/main.cpp
     ${SRC_DIR}/loader.cpp
+    ${SRC_DIR}/global.c
     ${CMAKE_SOURCE_DIR}/thirdparty/tinyobj_loader_c/tinyobj_loader_c.c
 )
 target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} ${OPENGL_glu_LIBRARY})

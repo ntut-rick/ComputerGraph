@@ -13,6 +13,7 @@
 #include "pryamid.h"
 #include "stb_image.h"
 
+#include "global.h"
 #include "loader.hpp"
 
 void ChangeSize(int, int);
@@ -315,11 +316,16 @@ void RenderScene() {
   glClearColor(0, 0, 0, 1.0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(-max_vertex, max_vertex, -max_vertex, max_vertex, -max_vertex,
+          max_vertex);
+
   glMatrixMode(GL_MODELVIEW);
   glEnable(GL_DEPTH_TEST);
 
   glLoadIdentity();
-  gluLookAt(1, 2, 10, 0, 0, 0, 0, 1, 0);
+  gluLookAt(0.01, 0.02, 0.1, 0, 0, 0, 0, 1, 0);
   glShadeModel(glShadeType);
 
   glBegin(GL_LINES);
