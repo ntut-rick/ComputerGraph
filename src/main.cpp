@@ -58,8 +58,9 @@ struct { GLfloat x,y,z; } camera_look_at = {0, 0, 0};
 std::vector<NiuBiObject> loaded_objs;
 int selected_obj_index = 0;
 
-GLfloat xangle = 0;
-GLfloat yangle = 0;
+// GLfloat xangle = 0;
+// GLfloat yangle = 0;
+GLfloat objRotMatrix[16] = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
 
 GLenum render_mode = GL_TRIANGLES;
 
@@ -102,10 +103,9 @@ int main(int argc, char **argv) {
 void ChangeSize(int w, int h) {
   window_size = {w, h};
   // reference: https://gist.github.com/insaneyilin/9320e8263b29e3c172c4f5963b8db693
-  // glMatrixMode(GL_PROJECTION);
-  // glLoadIdentity();
-  // glFrustum(-1.0, 1.0, -1.0, 1.0, 1.5, 20.0);
-  // glMatrixMode(GL_MODELVIEW);
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glFrustum(-1.0, 1.0, -1.0, 1.0, 1.5, 20.0);
   glutPostRedisplay();
 }
 
@@ -196,11 +196,10 @@ void RenderScene(void) {
   // init the viewport
   glViewport(0, 0, window_size.width, window_size.height);
 
-  // glMatrixMode(GL_PROJECTION);
-  // glLoadIdentity();
-  // glOrtho(ortho_settings.left, ortho_settings.right,
-  //         ortho_settings.bottom, ortho_settings.top,
-  //         ortho_settings.zNear, ortho_settings.zFar);
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(ortho_settings.left, ortho_settings.right, ortho_settings.bottom, ortho_settings.top,
+          ortho_settings.zNear, ortho_settings.zFar);
 
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
@@ -213,14 +212,20 @@ void RenderScene(void) {
 
   drawXYZaxes();
 
-  glRotatef(xangle, 1,0,0);
-  glRotatef(yangle, 0,1,0);
+  glMultMatrixf(objRotMatrix);
 
   drawSelectedOjbect();
 
   glutSwapBuffers();
 }
 
+void my_magic_rotate(GLfloat *m, GLfloat xangle, GLfloat yangle) {
+  glMatrixMode(GL_MODELVIEW);
+  glLoadMatrixf(m);
+  glRotatef(xangle, 1,0,0);
+  glRotatef(yangle, 0,1,0);
+  glGetFloatv(GL_MODELVIEW_MATRIX, m);
+}
 
 int last_x, last_y;
 void MousePress(int button, int state, int x, int y) {
@@ -246,10 +251,19 @@ void MousePress(int button, int state, int x, int y) {
 void MouseDrag(int x, int y) {
   const int dx = x - last_x;
   const int dy = y - last_y;
-  xangle += dy;
-  yangle += dx;
+  // xangle += dy;
+  // yangle += dx;
   // printf("xa:%f, ya:%f\\", xangle, yangle);
   // printf("moude delta = %d %d\n", dx, dy);
+  my_magic_rotate(objRotMatrix, dy, dx);
+
+  for (int i = 0; i < 16; ++i) {
+    std::cout << objRotMatrix[i] << " ";
+    if ((i + 1) % 4 == 0) {
+        std::cout << std::endl;
+    }
+  }
+  
   last_x = x;
   last_y = y;
   glutPostRedisplay();
@@ -258,17 +272,17 @@ void mouseWheel(int button, int dir, int x, int y)
 {
   static float scale = 10;
   if (dir > 0) {
-    camera_pos.z /= 1.2;
+    // camera_pos.z /= 1.2;
     scale /= 1.2;
   } else {
-    camera_pos.z *= 1.2;
+    // camera_pos.z *= 1.2;
     scale *= 1.2;
   }
-  // ortho_settings.left = -1*scale;
-  // ortho_settings.right = 1*scale;
-  // ortho_settings.bottom = -1*scale;
-  // ortho_settings.top = 1*scale;
-  printf("z=%lf\n", scale);
+  ortho_settings.left = -1*scale;
+  ortho_settings.right = 1*scale;
+  ortho_settings.bottom = -1*scale;
+  ortho_settings.top = 1*scale;
+  // printf("z=%lf\n", scale);
   glutPostRedisplay();
 }
 
@@ -277,7 +291,6 @@ void MenuCallback(int value) {
   printf("selected_obj_index = %d\n", selected_obj_index);
   glutPostRedisplay();
 }
-
 void ColorModeMenuCallback(int value) {
   switch(value) {
     case 1:
@@ -289,7 +302,6 @@ void ColorModeMenuCallback(int value) {
   }
   glutPostRedisplay();
 }
-
 void RenderModeMenuCallback(int value) {
   switch(value) {
     case 1:
@@ -304,7 +316,6 @@ void RenderModeMenuCallback(int value) {
   }
   glutPostRedisplay();
 }
-
 void RotationModeCallback(int value) {
   //TODO: RotationModeCallback
   printf("TODO: RotationModeCallback called\n");
@@ -313,13 +324,17 @@ void RotationModeCallback(int value) {
 void OnKeyBoardPress(unsigned char key, int x, int y) {
   switch (key) {
   case ' ':
-    xangle = 0;
-    yangle = 0;
+    // xangle = 0;
+    // yangle = 0;
     // current_display_obj->set_transform_to_target({0, 0, 0}, ortho_settings);
     // transform->set_rotation_by_euler({0, 0, 0});
     // transform->set_rotation_by_axis(0, {0, 0, 1});
     camera_pos = {0, 0, 10};
     camera_look_at = {0, 0, 0};
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glGetFloatv(GL_MODELVIEW_MATRIX, objRotMatrix);
     break;
   }
   glutPostRedisplay();
