@@ -40,7 +40,7 @@ static int BuildManu();
 static void MenuCallback(int);
 static void ColorModeMenuCallback(int);
 static void RenderModeMenuCallback(int);
-static void RotationModeCallback(int);
+static void TransformModeCallback(int);
 
 static void LoadJykuoTexture();
 
@@ -243,20 +243,7 @@ void MousePress(int button, int state, int x, int y) {
   if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
     last_x = x;
     last_y = y;
-    // printf("reset xy\n");
-    // if (mousepoint01Status == false) {
-    //   mouseViewport1WorldPos1[0] = (2 * ((float)x / 800) - 1) * (10);
-    //   mouseViewport1WorldPos1[1] = (-2 * ((float)y / 800) + 1) * (10);
-    //   mouseViewport1WorldPos1[2] = 0;
-    //   mousepoint01Status = true;
-    // } else {
-    //   mouseViewport1WorldPos2[0] = (2 * ((float)x / 800) - 1) * (10);
-    //   mouseViewport1WorldPos2[1] = (-2 * ((float)y / 800) + 1) * (10);
-    //   mouseViewport1WorldPos2[2] = 0;
-    //   mousepoint01Status = false;
-    // }
   }
-  // gluInvertMatrix();
   glutPostRedisplay();
 }
 void MouseDrag(int x, int y) {
@@ -280,13 +267,13 @@ void mouseWheel(int button, int dir, int x, int y)
     // camera_pos.z *= 1.2;
     zoomingScaler /= 1.2;
   }
-  printf("zoomingScaler=%lf\n", zoomingScaler);
+  // printf("zoomingScaler=%lf\n", zoomingScaler);
   glutPostRedisplay();
 }
 
 void MenuCallback(int value) {
   selected_obj_index = value-1;
-  printf("selected_obj_index = %d\n", selected_obj_index);
+  std::cout << "Selected obj: " << loaded_objs[selected_obj_index].name << std::endl;
   zoomingScaler = loaded_objs[selected_obj_index].scale;
   glutPostRedisplay();
 }
@@ -315,9 +302,9 @@ void RenderModeMenuCallback(int value) {
   }
   glutPostRedisplay();
 }
-void RotationModeCallback(int value) {
-  //TODO: RotationModeCallback
-  printf("TODO: RotationModeCallback called\n");
+void TransformModeCallback(int value) {
+  //TODO: TransformModeCallback
+  printf("TODO: TransformModeCallback called\n");
 }
 
 void OnKeyBoardPress(unsigned char key, int x, int y) {
@@ -347,11 +334,16 @@ int BuildManu() {
   glutAddMenuEntry("Line", 2);
   glutAddMenuEntry("Face", 3);
 
+  int submenu_transform = glutCreateMenu(TransformModeCallback);
+  glutAddMenuEntry("Object", 1);
+  glutAddMenuEntry("Camera", 2);
+
   // GLUT Doesn't Support remove menu item, so we need to recreate one. by HEKEPOIU
   int menu_id = glutCreateMenu(MenuCallback);
 
   glutAddSubMenu("Color Mode", submenu_color);
   glutAddSubMenu("Render Mode", submenu_renderMode);
+  glutAddSubMenu("Transform Mode", submenu_transform);
 
   return menu_id;
 

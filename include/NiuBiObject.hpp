@@ -19,6 +19,7 @@ using Face = std::array<int, 3>;
 
 class NiuBiObject {
 public:
+  std::string name;
   float scale;
   std::vector<Vertex> vertices;
   std::vector<Face> faces;
@@ -56,8 +57,9 @@ public:
         } break;
       } // switch
     } // while
+    obj.name = filepath;
     obj.scale = 20.0f / (max_b-min_b);
-    printf("%s scaler: %f\n", filepath, obj.scale);
+    std::cout << filepath << " scaler: " << obj.scale << std::endl;
     return obj;
   }
 };
