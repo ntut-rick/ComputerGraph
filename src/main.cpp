@@ -27,6 +27,16 @@
 //   X, Y, Z,
 // };
 
+// Define a macro to print a 4x4 array
+#define PRINT_4X4_ARRAY(arr) \
+    do { \
+        for (int i = 0; i < 16; ++i) { \
+            std::cout << arr[i] << "\t"; \
+            if ((i + 1) % 4 == 0) \
+                std::cout << std::endl; \
+        } \
+    } while (0)
+
 static void RenderScene(void);
 static void ChangeSize(int, int);
 
@@ -60,6 +70,24 @@ std::vector<NiuBiObject> loaded_objs;
 int selected_obj_index = 0;
 
 GLfloat objRotMatrix[16] = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+GLfloat objTranMatrix[16] = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+GLfloat cameraRotMatrix[16] = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,10,1};
+void translateObject(GLfloat x, GLfloat y,GLfloat z);
+void translateCamera(GLfloat x, GLfloat y,GLfloat z);
+void (*translateCommand)(
+   GLfloat x,
+   GLfloat y,
+   GLfloat z
+) = translateObject;
+void rotateObject(GLfloat angle, GLfloat x,  GLfloat y, GLfloat z);
+void rotateCamera(GLfloat angle, GLfloat x,  GLfloat y, GLfloat z);
+void (*rotateCommand)(
+  GLfloat angle,
+  GLfloat x,
+  GLfloat y,
+  GLfloat z
+) = rotateObject;
+
 GLenum render_mode = GL_TRIANGLES;
 float zoomingScaler = 1;
 
@@ -131,17 +159,17 @@ void LoadJykuoTexture() {
 
 void drawXYZaxes(void) {
   glBegin(GL_LINES);
-    glColor3f(1.0f, 0.0f, 0.0f);
+    glColor3f(1.0f, 0.5f, 0.5f);
     glVertex3f(100.0f, 0.0f, 0.0f);
     glVertex3f(-100.0f, 0.0f, 0.0f);
   glEnd();
   glBegin(GL_LINES);
-    glColor3f(0.0f, 1.0f, 0.0f);
+    glColor3f(0.5f, 1.0f, 0.5f);
     glVertex3f(0.0f, 100.0f, 0.0f);
     glVertex3f(0.0f, -100.0f, 0.0f);
   glEnd();
   glBegin(GL_LINES);
-    glColor3f(0.0f, 0.0f, 1.0f);
+    glColor3f(0.5f, 0.5f, 1.0f);
     glVertex3f(0.0f, 0.0f, 100.0f);
     glVertex3f(0.0f, 0.0f, -100.0f);
   glEnd();
@@ -213,17 +241,15 @@ void RenderScene(void) {
 
   drawXYZaxes();
 
+  glMultMatrixf(objTranMatrix);
   glMultMatrixf(objRotMatrix);
-  // TODO: objTransMatrix
-  // glMultMatrixf(objTransMatrix);
 
   drawSelectedOjbect();
 
   glutSwapBuffers();
 }
 
-void my_magic_rotate(
-  GLfloat *m,
+void rotateObject(
   GLfloat angle,
   GLfloat x,
   GLfloat y,
@@ -232,10 +258,29 @@ void my_magic_rotate(
   glMatrixMode(GL_MODELVIEW);
   glPushMatrix();
   glLoadIdentity();
-  glRotatef(angle, x, y, z);
-  glMultMatrixf(m);
-  glGetFloatv(GL_MODELVIEW_MATRIX, m);
+  const float ads_ssensitivity = 0.5 / (zoomingScaler / loaded_objs[selected_obj_index].scale);
+  glRotatef(angle*ads_ssensitivity, x, y, z);
+  glMultMatrixf(objRotMatrix);
+  glGetFloatv(GL_MODELVIEW_MATRIX, objRotMatrix);
   glPopMatrix();
+}
+void rotateCamera(
+  GLfloat angle,
+  GLfloat x,
+  GLfloat y,
+  GLfloat z
+) {
+glMatrixMode(GL_MODELVIEW);
+glPushMatrix();
+  glLoadIdentity();
+  glRotatef(angle/5, x, y, z);
+  glMultMatrixf(cameraRotMatrix);
+  glGetFloatv(GL_MODELVIEW_MATRIX, cameraRotMatrix);
+  PRINT_4X4_ARRAY(cameraRotMatrix);
+  camera_pos.x = cameraRotMatrix[12];
+  camera_pos.y = cameraRotMatrix[13];
+  camera_pos.z = cameraRotMatrix[14];
+glPopMatrix();
 }
 
 int last_x, last_y;
@@ -250,9 +295,8 @@ void MouseDrag(int x, int y) {
   const int dx = x - last_x;
   const int dy = y - last_y;
   // printf("moude delta = %d %d\n", dx, dy);
-  const float ads_ssensitivity = 0.5 / (zoomingScaler / loaded_objs[selected_obj_index].scale);
-  my_magic_rotate(objRotMatrix, dy*ads_ssensitivity, 1, 0, 0);
-  my_magic_rotate(objRotMatrix, dx*ads_ssensitivity, 0, 1, 0);
+  rotateCommand(dy, 1, 0, 0);
+  rotateCommand(dx, 0, 1, 0);
   last_x = x;
   last_y = y;
   glutPostRedisplay();
@@ -303,23 +347,63 @@ void RenderModeMenuCallback(int value) {
   glutPostRedisplay();
 }
 void TransformModeCallback(int value) {
-  //TODO: TransformModeCallback
-  printf("TODO: TransformModeCallback called\n");
+  switch(value) {
+    case 1:
+      rotateCommand = rotateObject;
+      translateCommand = translateObject;
+      break;
+    case 2:
+      rotateCommand = rotateCamera;
+      // translateCommand = translateCamera;
+      translateCommand = translateObject;
+      break;
+  }
+  glutPostRedisplay();
 }
 
+void translateObject(
+   GLfloat x,
+   GLfloat y,
+   GLfloat z
+) {
+  glMatrixMode(GL_MODELVIEW);
+  glPushMatrix();
+  glLoadIdentity();
+  glTranslatef(x, y, z);
+  glMultMatrixf(objTranMatrix);
+  glGetFloatv(GL_MODELVIEW_MATRIX, objTranMatrix);
+  glPopMatrix();
+}
+void translateCamera(
+   GLfloat x,
+   GLfloat y,
+   GLfloat z
+) {
+}
 void OnKeyBoardPress(unsigned char key, int x, int y) {
   switch (key) {
   case ' ':
     // current_display_obj->set_transform_to_target({0, 0, 0}, ortho_settings);
     // transform->set_rotation_by_euler({0, 0, 0});
-    // transform->set_rotation_by_axis(0, {0, 0, 1});
+    // transform->set_rotation_by_axi(0, {0, 0, 1});
     camera_pos = {0, 0, 10};
     camera_look_at = {0, 0, 0};
 
     glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
     glLoadIdentity();
     glGetFloatv(GL_MODELVIEW_MATRIX, objRotMatrix);
+    glLoadIdentity();
+    glGetFloatv(GL_MODELVIEW_MATRIX, objTranMatrix);
+    glLoadIdentity();
+    glTranslatef(0,0,10);
+    glGetFloatv(GL_MODELVIEW_MATRIX, cameraRotMatrix);
+    glPopMatrix();
     break;
+  case 'w': translateCommand( 0, 0,-.2); break;
+  case 's': translateCommand( 0, 0, .2); break;
+  case 'a': translateCommand(-.2, 0, 0); break;
+  case 'd': translateCommand( .2, 0, 0); break;
   }
   glutPostRedisplay();
 }
