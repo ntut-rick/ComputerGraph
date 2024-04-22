@@ -16,17 +16,6 @@
 // #define MY_GL_TRANSFORM_IMPLEMENTATION
 #include "myglTransform.h"
 
-// enum class ControlMode {
-//   OBJECT_ROTATE,
-//   CAMERA_UP,
-//   CAMERA_POS,
-// };
-// ControlMode current_control_mode = ControlMode::OBJECT_ROTATE;
-
-// enum class CurrentControlAxis {
-//   X, Y, Z,
-// };
-
 // Define a macro to print a 4x4 array
 #define PRINT_4X4_ARRAY(arr) \
     do { \
@@ -54,9 +43,6 @@ static void TransformModeCallback(int);
 
 static void LoadJykuoTexture();
 
-// bool mousepoint01Status = false;
-// struct { GLfloat x,y,z; } mouseViewport1WorldPos1 = {10, 10, 0};
-// struct { GLfloat x,y,z; } mouseViewport1WorldPos2 = {10, 10, 0};
 
 struct { int width, height; } window_size = {400, 400};
 

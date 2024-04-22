@@ -9,13 +9,11 @@ add_subdirectory(thirdparty/freeglut)
 
 # this two line don't work new.
 set(INCLUDE_FILES
-    # ${INCLUDE_DIR}/Transform.cpp
     ${INCLUDE_DIR}/NiuBiObject.hpp
     ${INCLUDE_DIR}/stb_image.h
     ${INCLUDE_DIR}/myglTransform.h
 )
 set(SRC_FILES
-    # ${SRC_DIR}/Transform.cpp
 )
 
 add_executable(${PROJECT_NAME}
