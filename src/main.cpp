@@ -57,13 +57,6 @@ int selected_obj_index = 0;
 GLfloat objRotMatrix[16] = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
 GLfloat objTranMatrix[16] = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
 GLfloat cameraRotMatrix[16] = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,10,1};
-void translateObject(GLfloat x, GLfloat y,GLfloat z);
-void translateCamera(GLfloat x, GLfloat y,GLfloat z);
-void (*translateCommand)(
-   GLfloat x,
-   GLfloat y,
-   GLfloat z
-) = translateObject;
 
 GLenum render_mode = GL_TRIANGLES;
 float zoomingScaler = 0.9;
@@ -184,11 +177,11 @@ void drawSelectedOjbect(void) {
   }
 }
 
-void drawPoint(int x, int y) {
+void drawPoint(int x, int y, GLenum mode=GL_QUADS) {
   const auto realsize = dimenstion*2+1;
   const float size = 20.0f/realsize;
   const float halfsize = size/2;
-  glBegin(GL_QUADS);
+  glBegin(mode);
     glVertex3f(x*size-halfsize, y*size-halfsize, 0);
     glVertex3f(x*size-halfsize, y*size+halfsize, 0);
     glVertex3f(x*size+halfsize, y*size+halfsize, 0);
@@ -203,12 +196,7 @@ void drawGrid() {
   const float halfsize = size/2;
   for(int i=-dimenstion; i<=dimenstion; i++) {
     for(int j=-dimenstion; j<=dimenstion; j++) {
-      glBegin(GL_LINE_LOOP);
-        glVertex3f(i*size-halfsize, j*size-halfsize, 0);
-        glVertex3f(i*size-halfsize, j*size+halfsize, 0);
-        glVertex3f(i*size+halfsize, j*size+halfsize, 0);
-        glVertex3f(i*size+halfsize, j*size-halfsize, 0);
-      glEnd();
+      drawPoint(i,j,GL_LINE_LOOP);
     }
   }
 }
@@ -253,7 +241,7 @@ void myUnproject(
 		glGetDoublev(GL_PROJECTION_MATRIX, projection);
 		glGetIntegerv(GL_VIEWPORT, viewport);
 		gluUnProject(x, y, 0, modelview, projection, viewport,
-                 &wx, &wy, &wz);
+                 wx, wy, wz);
 }
 
 int last_x, last_y;
@@ -295,25 +283,6 @@ void MenuCallback(int value) {
   dimenstion = value;
   glutPostRedisplay();
 }
-void translateObject(
-   GLfloat x,
-   GLfloat y,
-   GLfloat z
-) {
-  glMatrixMode(GL_MODELVIEW);
-  glPushMatrix();
-  glLoadIdentity();
-  glTranslatef(x, y, z);
-  glMultMatrixf(objTranMatrix);
-  glGetFloatv(GL_MODELVIEW_MATRIX, objTranMatrix);
-  glPopMatrix();
-}
-void translateCamera(
-   GLfloat x,
-   GLfloat y,
-   GLfloat z
-) {
-}
 void OnKeyBoardPress(unsigned char key, int x, int y) {
   switch (key) {
   case ' ':
@@ -334,10 +303,6 @@ void OnKeyBoardPress(unsigned char key, int x, int y) {
     glGetFloatv(GL_MODELVIEW_MATRIX, cameraRotMatrix);
     glPopMatrix();
     break;
-  case 'w': translateCommand( 0, 0,-.2); break;
-  case 's': translateCommand( 0, 0, .2); break;
-  case 'a': translateCommand(-.2, 0, 0); break;
-  case 'd': translateCommand( .2, 0, 0); break;
   }
   glutPostRedisplay();
 }
