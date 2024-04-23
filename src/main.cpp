@@ -78,13 +78,27 @@ void Loop() {
 
 double deg2deg(double deg) { return deg; }
 
-void MouseHandler(int button, int state, int x, int y) {
+int size = 10;
+const auto border = 0.05;
+
+bool active = false;
+float x = 0;
+float y = 0;
+
+void MouseHandler(int button, int state, int _x, int _y) {
   if (button != GLUT_LEFT_BUTTON) {
     return;
   }
 
-  clickx = (float)x / 400 - 1;
-  clicky = -(float)y / 400 + 1;
+  active = true;
+  const auto unit = 800 / size;
+  _x = (_x / unit) * unit;
+  _y = (_y / unit) * unit;
+  printf("%d %d\n", _x, _y);
+
+  x = (float)_x / 400 - 1.0 + 0.5 * (2.0 / size);
+  y = -(float)_y / 400 + 1.0 - 0.5 * (2.0 / size);
+  // printf("%f %f\n", x, y);
 }
 
 void SpecialKeyHandler(int key, int x, int y) {
@@ -220,6 +234,8 @@ Color GetColor() {
   }
 }
 
+void Size(int value) { size = value; }
+
 int main(int argc, char **argv) {
   int err;
   if (argc == 2) {
@@ -239,25 +255,15 @@ int main(int argc, char **argv) {
   glutInitWindowPosition(600, 80);
   glutCreateWindow("Simple Triangle");
 
-  auto dtMenu = glutCreateMenu(DisplayTypeMenuCallback);
-  glutAddMenuEntry("Point", DisplayType::Point);
-  glutAddMenuEntry("Line", DisplayType::Line);
-  glutAddMenuEntry("Face", DisplayType::Face);
+  // glutCreateMenu(DisplayTypeMenuCallback);
+  // glutAddMenuEntry("Point", DisplayType::Point);
+  // glutAddMenuEntry("Line", DisplayType::Line);
+  // glutAddMenuEntry("Face", DisplayType::Face);
 
-  auto colorMenu = glutCreateMenu(ColorModeMenuCallback);
-  glutAddMenuEntry("Single", ColorMode::Single);
-  glutAddMenuEntry("Random", ColorMode::Random);
-
-  auto modelMenu = glutCreateMenu(ModelSelectMenuCallback);
-  glutAddMenuEntry("Gourd", ActiveModel::Gourd);
-  glutAddMenuEntry("Octahedron", ActiveModel::Octahedron);
-  glutAddMenuEntry("Teapot", ActiveModel::Teapot);
-  glutAddMenuEntry("Teddy", ActiveModel::Teddy);
-
-  glutCreateMenu(nullptr);
-  glutAddSubMenu("Display Type", dtMenu);
-  glutAddSubMenu("Color Mode", colorMenu);
-  glutAddSubMenu("Active Model", modelMenu);
+  glutCreateMenu(Size);
+  glutAddMenuEntry("10", 10);
+  glutAddMenuEntry("15", 15);
+  glutAddMenuEntry("20", 20);
 
   glutAttachMenu(GLUT_RIGHT_BUTTON);
 
@@ -281,139 +287,37 @@ void ChangeSize(int w, int h) {
   glLoadIdentity();
 }
 
-void DrawPoint() {
-  glPointSize(5);
-  glBegin(GL_POINTS);
-  for (const auto &v : m.vertices) {
-    Color c = GetColor();
-    glColor3f(c.r, c.g, c.b);
-
-    glVertex3f(v.x, v.y, v.z);
-  }
-  glEnd();
-}
-
-void DrawLine() {
-  glBegin(GL_LINES);
-
-  for (const auto &f : m.faces) {
-    Color c = GetColor();
-    glColor3f(c.r, c.g, c.b);
-
-    const auto p0 = m.vertices[f.p0 - 1];
-    const auto p1 = m.vertices[f.p1 - 1];
-    const auto p2 = m.vertices[f.p2 - 1];
-
-    glVertex3f(p0.x, p0.y, p0.z);
-    glVertex3f(p1.x, p1.y, p1.z);
-
-    glVertex3f(p0.x, p0.y, p0.z);
-    glVertex3f(p2.x, p2.y, p2.z);
-
-    glVertex3f(p1.x, p1.y, p1.z);
-    glVertex3f(p2.x, p2.y, p2.z);
-  }
-  glEnd();
-}
-
-void DrawFace() {
-  glBegin(GL_TRIANGLES);
-
-  for (const auto &f : m.faces) {
-    Color c = GetColor();
-    glColor3f(c.r, c.g, c.b);
-
-    const auto p0 = m.vertices[f.p0 - 1];
-    glVertex3f(p0.x, p0.y, p0.z);
-
-    const auto p1 = m.vertices[f.p1 - 1];
-    glVertex3f(p1.x, p1.y, p1.z);
-
-    const auto p2 = m.vertices[f.p2 - 1];
-    glVertex3f(p2.x, p2.y, p2.z);
-  }
-  glEnd();
-}
-
 void RenderScene() {
   glClearColor(0, 0, 0, 1.0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  glOrtho(-max_vertex, max_vertex, -max_vertex, max_vertex, -max_vertex * 10,
-          max_vertex * 10);
+  glOrtho(-1 - border, 1 + border, -1 - border, 1 + border, -10, 10);
 
   glMatrixMode(GL_MODELVIEW);
   glEnable(GL_DEPTH_TEST);
 
   glLoadIdentity();
-  gluLookAt(camera_loc.x, camera_loc.y, camera_loc.y, camera_lookat.x,
-            camera_lookat.y, camera_lookat.z, 0, 1, 0);
+  gluLookAt(0, 0, 1, 0, 0, 0, 0, 1, 0);
   glShadeModel(glShadeType);
 
   glBegin(GL_LINES);
-  glColor3f(1.0f, 0.0f, 0.0f);
-  glVertex3f(100, 0, 0);
-  glVertex3f(-100, 0, 0);
-  glEnd();
-  glBegin(GL_LINES);
-  glColor3f(0.0f, 1.0f, 0.0f);
-  glVertex3f(0, -100, 0);
-  glVertex3f(0, 100, 0);
-  glEnd();
-  glBegin(GL_LINES);
-  glColor3f(0.0f, 0.0f, 1.0f);
-  glVertex3f(0, 0, -100);
-  glVertex3f(0, 0, 100);
-  glEnd();
-  glBegin(GL_LINES);
-  glColor3f(1.0f, 0.0f, 1.0f);
-  glVertex3f(-10 * clickx, -10 * clicky, 0.0f);
-  glVertex3f(10 * clickx, 10 * clicky, 0.0f);
-  glColor3f(1.0f, 1.0f, 1.0f);
+  for (float i = -1.0; i <= 1.0; i += 2.0 / size) {
+    glVertex3f(i, -1, 0);
+    glVertex3f(i, 1, 0);
+  }
+  for (float i = -1.0; i <= 1.0; i += 2.0 / size) {
+    glVertex3f(-1, i, 0);
+    glVertex3f(1, i, 0);
+  }
   glEnd();
 
-  double trans[] = {
-      1,      0,      0,      0, //
-      0,      1,      0,      0, //
-      0,      0,      1,      0, //
-      xtrans, ytrans, ztrans, 1, //
-  };
-
-  double l = sqrt(clickx * clickx + clicky * clicky);
-  double ux = clickx / l;
-  double uy = clicky / l;
-
-  // clang-format off
-  double scale[] = {
-      xscale, 0,      0, 0, //
-      0,      yscale, 0, 0, //
-      0,      0,      zscale, 0, //
-      0,      0,      0,      1, //
-  };
-  // clang-format on
-  /* glRotatef(yangle, 0, 1, 0); */
-  glMultMatrixd(trans);
-  rot_x(xangle);
-  rot_y(yangle);
-  rot_z(zangle);
-  rot_z(asin(ux));
-  rot_y(aangle);
-  rot_z(-asin(ux));
-  glMultMatrixd(scale);
-
-  srand(69420);
-  switch (dt) {
-  case DisplayType::Point:
-    DrawPoint();
-    break;
-  case DisplayType::Line:
-    DrawLine();
-    break;
-  case DisplayType::Face:
-    DrawFace();
-    break;
+  if (active) {
+    glPointSize(800.0 / (2 * border + size));
+    glBegin(GL_POINTS);
+    glVertex3f(x, y, 0);
+    glEnd();
   }
 
   glutSwapBuffers();
