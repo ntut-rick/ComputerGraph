@@ -35,7 +35,6 @@ static void MousePress(int, int, int, int);
 static void MouseDrag(int, int);
 static void mouseWheel(int, int, int, int);
 
-static int BuildManu();
 static void MenuCallback(int);
 static void ColorModeMenuCallback(int);
 static void RenderModeMenuCallback(int);
@@ -65,17 +64,12 @@ void (*translateCommand)(
    GLfloat y,
    GLfloat z
 ) = translateObject;
-void rotateObject(GLfloat angle, GLfloat x,  GLfloat y, GLfloat z);
-void rotateCamera(GLfloat angle, GLfloat x,  GLfloat y, GLfloat z);
-void (*rotateCommand)(
-  GLfloat angle,
-  GLfloat x,
-  GLfloat y,
-  GLfloat z
-) = rotateObject;
 
 GLenum render_mode = GL_TRIANGLES;
-float zoomingScaler = 1;
+float zoomingScaler = 0.9;
+
+int dimenstion = 10;
+struct { int x,y; } selectedPosition = {0,0};
 
 int main(int argc, char **argv) {
   glutInit(&argc, argv);
@@ -84,28 +78,18 @@ int main(int argc, char **argv) {
   glutInitWindowPosition(0, 0);
   glutCreateWindow("Niu-Bi de CG Midterm Work");
 
-  // glutCreateMenu(MenuCallback);
-  BuildManu();
-  loaded_objs.clear();
-  for (int i=1; i<argc; i++) {
-    if (!std::filesystem::exists(argv[i])) {
-      // skip non-file arguments
-      continue;
-    }
-    auto obj = NiuBiObject::fromFile(argv[i]);
-    loaded_objs.push_back(obj);
-    glutAddMenuEntry(argv[i], i);
+  glutCreateMenu(MenuCallback);
+  for(int i=10; i<1000; i+=5) {
+    auto a = std::to_string(i);
+    glutAddMenuEntry(a.c_str(), i);
   }
   glutAttachMenu(GLUT_RIGHT_BUTTON);
-
-  LoadJykuoTexture();
 
   glutReshapeFunc(ChangeSize);
   glutKeyboardFunc(OnKeyBoardPress);
 
-  glutMouseFunc(MousePress);
-  glutMotionFunc(MouseDrag);
   glutMouseWheelFunc(mouseWheel);
+  glutMouseFunc(MousePress);
 
   glutDisplayFunc(RenderScene);
   glutMainLoop(); // http://www.programmer-club.com.tw/ShowSameTitleN/opengl/2288.html
@@ -200,6 +184,35 @@ void drawSelectedOjbect(void) {
   }
 }
 
+void drawPoint(int x, int y) {
+  const auto realsize = dimenstion*2+1;
+  const float size = 20.0f/realsize;
+  const float halfsize = size/2;
+  glBegin(GL_QUADS);
+    glVertex3f(x*size-halfsize, y*size-halfsize, 0);
+    glVertex3f(x*size-halfsize, y*size+halfsize, 0);
+    glVertex3f(x*size+halfsize, y*size+halfsize, 0);
+    glVertex3f(x*size+halfsize, y*size-halfsize, 0);
+  glEnd();
+}
+
+
+void drawGrid() {
+  const auto realsize = dimenstion*2+1;
+  const float size = 20.0f/realsize;
+  const float halfsize = size/2;
+  for(int i=-dimenstion; i<=dimenstion; i++) {
+    for(int j=-dimenstion; j<=dimenstion; j++) {
+      glBegin(GL_LINE_LOOP);
+        glVertex3f(i*size-halfsize, j*size-halfsize, 0);
+        glVertex3f(i*size-halfsize, j*size+halfsize, 0);
+        glVertex3f(i*size+halfsize, j*size+halfsize, 0);
+        glVertex3f(i*size+halfsize, j*size-halfsize, 0);
+      glEnd();
+    }
+  }
+}
+
 void RenderScene(void) {
   glClearColor(0, 0, 0, 1.0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -225,48 +238,22 @@ void RenderScene(void) {
     0, 1, 0);
   glEnable(GL_DEPTH_TEST);
 
-  drawXYZaxes();
-
-  glMultMatrixf(objTranMatrix);
-  glMultMatrixf(objRotMatrix);
-
-  drawSelectedOjbect();
+  drawGrid();
+  drawPoint(selectedPosition.x, selectedPosition.y);
 
   glutSwapBuffers();
 }
 
-void rotateObject(
-  GLfloat angle,
-  GLfloat x,
-  GLfloat y,
-  GLfloat z
-) {
-  glMatrixMode(GL_MODELVIEW);
-  glPushMatrix();
-  glLoadIdentity();
-  const float ads_ssensitivity = 0.5 / (zoomingScaler / loaded_objs[selected_obj_index].scale);
-  glRotatef(angle*ads_ssensitivity, x, y, z);
-  glMultMatrixf(objRotMatrix);
-  glGetFloatv(GL_MODELVIEW_MATRIX, objRotMatrix);
-  glPopMatrix();
-}
-void rotateCamera(
-  GLfloat angle,
-  GLfloat x,
-  GLfloat y,
-  GLfloat z
-) {
-glMatrixMode(GL_MODELVIEW);
-glPushMatrix();
-  glLoadIdentity();
-  glRotatef(angle/5, x, y, z);
-  glMultMatrixf(cameraRotMatrix);
-  glGetFloatv(GL_MODELVIEW_MATRIX, cameraRotMatrix);
-  PRINT_4X4_ARRAY(cameraRotMatrix);
-  camera_pos.x = cameraRotMatrix[12];
-  camera_pos.y = cameraRotMatrix[13];
-  camera_pos.z = cameraRotMatrix[14];
-glPopMatrix();
+void myUnproject(
+  int x, int y, int z,
+  GLdouble *wx, GLdouble *wy, GLdouble *wz) {
+		GLdouble modelview[16], projection[16];
+		GLint viewport[4];
+		glGetDoublev(GL_MODELVIEW_MATRIX, modelview);
+		glGetDoublev(GL_PROJECTION_MATRIX, projection);
+		glGetIntegerv(GL_VIEWPORT, viewport);
+		gluUnProject(x, y, 0, modelview, projection, viewport,
+                 &wx, &wy, &wz);
 }
 
 int last_x, last_y;
@@ -275,16 +262,18 @@ void MousePress(int button, int state, int x, int y) {
     last_x = x;
     last_y = y;
   }
-  glutPostRedisplay();
-}
-void MouseDrag(int x, int y) {
-  const int dx = x - last_x;
-  const int dy = y - last_y;
-  // printf("moude delta = %d %d\n", dx, dy);
-  rotateCommand(dy, 1, 0, 0);
-  rotateCommand(dx, 0, 1, 0);
-  last_x = x;
-  last_y = y;
+  if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+	{
+    GLdouble wx,wy,wz;
+		myUnproject(x,y,0, &wx, &wy, &wz);
+		
+    const float len = 10.0f/dimenstion;
+    printf("%f\n", len);
+    selectedPosition.x = (int)(wx>0 ? wx/len+0.5 : wx/len-0.5);
+    selectedPosition.y = (int)(-wy>0 ? -wy/len+0.5 : -wy/len-0.5);
+    // printf("raw xy (%lf,%lf)\n", wx, wy);
+    printf("    xy (%d,%d)\n", selectedPosition.x, selectedPosition.y);
+	}
   glutPostRedisplay();
 }
 void mouseWheel(int button, int dir, int x, int y)
@@ -302,51 +291,10 @@ void mouseWheel(int button, int dir, int x, int y)
 }
 
 void MenuCallback(int value) {
-  selected_obj_index = value-1;
-  std::cout << "Selected obj: " << loaded_objs[selected_obj_index].name << std::endl;
-  zoomingScaler = loaded_objs[selected_obj_index].scale;
+  std::cout << "dim: " << value << std::endl;
+  dimenstion = value;
   glutPostRedisplay();
 }
-void ColorModeMenuCallback(int value) {
-  switch(value) {
-    case 1:
-      setcolorfuncion = singlecolor;
-      break;
-    case 2:
-      setcolorfuncion = randomcolor;
-      break;
-  }
-  glutPostRedisplay();
-}
-void RenderModeMenuCallback(int value) {
-  switch(value) {
-    case 1:
-      render_mode = GL_POINTS;
-      break;
-    case 2:
-      render_mode = GL_LINE_LOOP;
-      break;
-    case 3:
-      render_mode = GL_TRIANGLES;
-      break;
-  }
-  glutPostRedisplay();
-}
-void TransformModeCallback(int value) {
-  switch(value) {
-    case 1:
-      rotateCommand = rotateObject;
-      translateCommand = translateObject;
-      break;
-    case 2:
-      rotateCommand = rotateCamera;
-      // translateCommand = translateCamera;
-      translateCommand = translateObject;
-      break;
-  }
-  glutPostRedisplay();
-}
-
 void translateObject(
    GLfloat x,
    GLfloat y,
@@ -392,30 +340,4 @@ void OnKeyBoardPress(unsigned char key, int x, int y) {
   case 'd': translateCommand( .2, 0, 0); break;
   }
   glutPostRedisplay();
-}
-
-int BuildManu() {
-  int submenu_color = glutCreateMenu(ColorModeMenuCallback);
-  glutAddMenuEntry("Single Color", 1);
-  glutAddMenuEntry("Random Colors", 2);
-
-  int submenu_renderMode = glutCreateMenu(RenderModeMenuCallback);
-  glutAddMenuEntry("Point", 1);
-  glutAddMenuEntry("Line", 2);
-  glutAddMenuEntry("Face", 3);
-
-  int submenu_transform = glutCreateMenu(TransformModeCallback);
-  glutAddMenuEntry("Object", 1);
-  glutAddMenuEntry("Camera", 2);
-
-  // GLUT Doesn't Support remove menu item, so we need to recreate one. by HEKEPOIU
-  int menu_id = glutCreateMenu(MenuCallback);
-
-  glutAddSubMenu("Color Mode", submenu_color);
-  glutAddSubMenu("Render Mode", submenu_renderMode);
-  glutAddSubMenu("Transform Mode", submenu_transform);
-
-  return menu_id;
-
-//  glutAddMenuEntry("Reload Path", count);
 }
