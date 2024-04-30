@@ -32,7 +32,7 @@ static void ChangeSize(int, int);
 static void OnKeyBoardPress(unsigned char, int, int);
 
 static void MousePress(int, int, int, int);
-static void MouseDrag(int, int);
+static void my_glutcb_mousedrag(int, int);
 static void mouseWheel(int, int, int, int);
 
 static void MenuCallback(int);
@@ -61,8 +61,12 @@ GLfloat cameraRotMatrix[16] = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,10,1};
 GLenum render_mode = GL_TRIANGLES;
 float zoomingScaler = 0.9;
 
-int dimenstion = 10;
+int kDimenstion = 10;
 struct { int x,y; } selectedPosition = {0,0};
+
+struct {
+  struct {int x,y;} start, end;
+} kMouseDragLine;
 
 int main(int argc, char **argv) {
   glutInit(&argc, argv);
@@ -83,6 +87,7 @@ int main(int argc, char **argv) {
 
   glutMouseWheelFunc(mouseWheel);
   glutMouseFunc(MousePress);
+  glutMotionFunc(my_glutcb_mousedrag);
 
   glutDisplayFunc(RenderScene);
   glutMainLoop(); // http://www.programmer-club.com.tw/ShowSameTitleN/opengl/2288.html
@@ -178,7 +183,7 @@ void drawSelectedOjbect(void) {
 }
 
 void drawPoint(int x, int y, GLenum mode=GL_QUADS) {
-  const auto realsize = dimenstion*2+1;
+  const auto realsize = kDimenstion*2+1;
   const float size = 20.0f/realsize;
   const float halfsize = size/2;
   glBegin(mode);
@@ -189,13 +194,66 @@ void drawPoint(int x, int y, GLenum mode=GL_QUADS) {
   glEnd();
 }
 
+// ref: https://www.geeksforgeeks.org/mid-point-line-generation-algorithm/
+void drawLine(int X1, int Y1, int X2, int Y2) {
+  // transform to quadrant I
+  // int magic_number_x = X2 - X1 > 0 ? 1 : -1;
+  // int magic_number_y = Y2 - Y1 > 0 ? 1 : -1;
+  
+  int dx = X2 - X1;
+  int dy = Y2 - Y1;
+
+  // start point / init point
+  drawPoint(X1, Y1);
+
+  if(dy<=dx) { 
+    // initial value of decision parameter d 
+    int d = dy - (dx/2); 
+  
+    // iterate through value of X
+    int y = 0;
+    for (int x=1; x<dx; x++) {
+      if (d < 0) {
+        // E or East is chosen 
+        d = d + dy;
+        glColor3f(0, 1, 0);
+      } else { 
+        // NE or North East is chosen 
+        d += (dy - dx); 
+        y++;
+        glColor3f(0, 0, 1);
+      }
+      drawPoint(X1+x,Y1+y);
+    }
+  } else { 
+    // initial value of decision parameter d 
+    int d = dx - (dy/2); 
+  
+    // iterate through value of X 
+    int x = 0;
+    for (int y=1; y<dy; y++) {
+      if (d < 0) {
+        // E or East is chosen 
+        d = d + dx; 
+        glColor3f(0, 1, 0);
+      } else { 
+        // NE or North East is chosen 
+        d += (dx - dy); 
+        x++; 
+        glColor3f(0, 0, 1);
+      }
+      drawPoint(X1+x,Y1+y);
+    }
+  }
+}
+
 
 void drawGrid() {
-  const auto realsize = dimenstion*2+1;
+  const auto realsize = kDimenstion*2+1;
   const float size = 20.0f/realsize;
   const float halfsize = size/2;
-  for(int i=-dimenstion; i<=dimenstion; i++) {
-    for(int j=-dimenstion; j<=dimenstion; j++) {
+  for(int i=-kDimenstion; i<=kDimenstion; i++) {
+    for(int j=-kDimenstion; j<=kDimenstion; j++) {
       drawPoint(i,j,GL_LINE_LOOP);
     }
   }
@@ -226,8 +284,16 @@ void RenderScene(void) {
     0, 1, 0);
   glEnable(GL_DEPTH_TEST);
 
+  glColor3f(1, 1, 1);
   drawGrid();
-  drawPoint(selectedPosition.x, selectedPosition.y);
+  glColor3f(1, 0, 0);
+  drawPoint(kMouseDragLine.start.x, kMouseDragLine.start.y);
+  drawPoint(kMouseDragLine.end.x, kMouseDragLine.end.y);
+  glColor3f(0, 1, 0);
+  drawLine(
+    kMouseDragLine.start.x, kMouseDragLine.start.y,
+    kMouseDragLine.end.x, kMouseDragLine.end.y
+  );
 
   glutSwapBuffers();
 }
@@ -244,24 +310,24 @@ void myUnproject(
                  wx, wy, wz);
 }
 
-int last_x, last_y;
+void magicTransform(int wx, int wy, int *x, int *y) {
+    GLdouble ox,oy,oz;
+		myUnproject(wx,wy,0, &ox, &oy, &oz);
+		
+    const float len = 10.0f/kDimenstion;
+    // printf("%f\n", len);
+    *x = (int)(ox>0 ? ox/len+0.5 : ox/len-0.5);
+    *y = (int)(-oy>0 ? -oy/len+0.5 : -oy/len-0.5);
+    // printf("raw xy (%lf,%lf)\n", wx, wy);
+    // printf("    xy (%d,%d)\n", selectedPosition.x, selectedPosition.y);
+}
+
 void MousePress(int button, int state, int x, int y) {
   if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-    last_x = x;
-    last_y = y;
+    magicTransform(x,y,
+      &kMouseDragLine.start.x,
+      &kMouseDragLine.start.y);
   }
-  if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
-	{
-    GLdouble wx,wy,wz;
-		myUnproject(x,y,0, &wx, &wy, &wz);
-		
-    const float len = 10.0f/dimenstion;
-    printf("%f\n", len);
-    selectedPosition.x = (int)(wx>0 ? wx/len+0.5 : wx/len-0.5);
-    selectedPosition.y = (int)(-wy>0 ? -wy/len+0.5 : -wy/len-0.5);
-    // printf("raw xy (%lf,%lf)\n", wx, wy);
-    printf("    xy (%d,%d)\n", selectedPosition.x, selectedPosition.y);
-	}
   glutPostRedisplay();
 }
 void mouseWheel(int button, int dir, int x, int y)
@@ -277,10 +343,16 @@ void mouseWheel(int button, int dir, int x, int y)
   // printf("zoomingScaler=%lf\n", zoomingScaler);
   glutPostRedisplay();
 }
+void my_glutcb_mousedrag(int x, int y) {
+    magicTransform(x,y,
+      &kMouseDragLine.end.x,
+      &kMouseDragLine.end.y);
+  glutPostRedisplay();
+}
 
 void MenuCallback(int value) {
   std::cout << "dim: " << value << std::endl;
-  dimenstion = value;
+  kDimenstion = value;
   glutPostRedisplay();
 }
 void OnKeyBoardPress(unsigned char key, int x, int y) {
