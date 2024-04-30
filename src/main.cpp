@@ -64,9 +64,10 @@ float zoomingScaler = 0.9;
 int kDimenstion = 10;
 struct { int x,y; } selectedPosition = {0,0};
 
-struct {
+struct kMouseDragLine_t {
   struct {int x,y;} start, end;
 } kMouseDragLine;
+std::vector<struct kMouseDragLine_t> kLines;
 
 int main(int argc, char **argv) {
   glutInit(&argc, argv);
@@ -172,7 +173,7 @@ void drawSelectedOjbect(void) {
       glTexCoord2f(.3f, .3f); glVertex3fv(curret_obj.vertices[face[1]].data());
       glTexCoord2f(.7f, .3f); glVertex3fv(curret_obj.vertices[face[2]].data());
     glEnd();
-    // Debugging black lines
+    // Debugging black kLines
     // glColor3f(0,0,0);
     // glBegin(GL_LINE_LOOP);
     //   glVertex3fv(curret_obj.vertices[face[0]].data());
@@ -197,20 +198,17 @@ void drawPoint(int x, int y, GLenum mode=GL_QUADS) {
 // ref: https://www.geeksforgeeks.org/mid-point-line-generation-algorithm/
 void drawLine(int X1, int Y1, int X2, int Y2) {
   // transform to quadrant I
-  // int magic_number_x = X2 - X1 > 0 ? 1 : -1;
-  // int magic_number_y = Y2 - Y1 > 0 ? 1 : -1;
+  int magic_number_x = X2 - X1 > 0 ? 1 : -1;
+  int magic_number_y = Y2 - Y1 > 0 ? 1 : -1;
   
-  int dx = X2 - X1;
-  int dy = Y2 - Y1;
+  int dx = (X2 - X1)*magic_number_x;
+  int dy = (Y2 - Y1)*magic_number_y;
 
   // start point / init point
   drawPoint(X1, Y1);
 
   if(dy<=dx) { 
-    // initial value of decision parameter d 
     int d = dy - (dx/2); 
-  
-    // iterate through value of X
     int y = 0;
     for (int x=1; x<dx; x++) {
       if (d < 0) {
@@ -223,13 +221,12 @@ void drawLine(int X1, int Y1, int X2, int Y2) {
         y++;
         glColor3f(0, 0, 1);
       }
-      drawPoint(X1+x,Y1+y);
+      drawPoint(
+        X1 + x*magic_number_x,
+        Y1 + y*magic_number_y);
     }
   } else { 
-    // initial value of decision parameter d 
     int d = dx - (dy/2); 
-  
-    // iterate through value of X 
     int x = 0;
     for (int y=1; y<dy; y++) {
       if (d < 0) {
@@ -242,7 +239,9 @@ void drawLine(int X1, int Y1, int X2, int Y2) {
         x++; 
         glColor3f(0, 0, 1);
       }
-      drawPoint(X1+x,Y1+y);
+      drawPoint(
+        X1 + x*magic_number_x,
+        Y1 + y*magic_number_y);
     }
   }
 }
@@ -286,14 +285,25 @@ void RenderScene(void) {
 
   glColor3f(1, 1, 1);
   drawGrid();
+
   glColor3f(1, 0, 0);
-  drawPoint(kMouseDragLine.start.x, kMouseDragLine.start.y);
-  drawPoint(kMouseDragLine.end.x, kMouseDragLine.end.y);
-  glColor3f(0, 1, 0);
-  drawLine(
-    kMouseDragLine.start.x, kMouseDragLine.start.y,
-    kMouseDragLine.end.x, kMouseDragLine.end.y
-  );
+    drawPoint(kMouseDragLine.start.x, kMouseDragLine.start.y);
+    drawPoint(kMouseDragLine.end.x, kMouseDragLine.end.y);
+    glColor3f(0, 1, 0);
+    drawLine(
+      kMouseDragLine.start.x, kMouseDragLine.start.y,
+      kMouseDragLine.end.x, kMouseDragLine.end.y
+    );
+  for (auto line : kLines) {
+    glColor3f(1, 0, 0);
+    drawPoint(line.start.x, line.start.y);
+    drawPoint(line.end.x, line.end.y);
+    glColor3f(0, 1, 0);
+    drawLine(
+      line.start.x, line.start.y,
+      line.end.x, line.end.y
+    );
+  }
 
   glutSwapBuffers();
 }
@@ -327,6 +337,12 @@ void MousePress(int button, int state, int x, int y) {
     magicTransform(x,y,
       &kMouseDragLine.start.x,
       &kMouseDragLine.start.y);
+    magicTransform(x,y,
+      &kMouseDragLine.end.x,
+      &kMouseDragLine.end.y);
+  }
+  if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
+    kLines.push_back(kMouseDragLine);
   }
   glutPostRedisplay();
 }
