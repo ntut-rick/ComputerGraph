@@ -86,19 +86,21 @@ float x = 0;
 float y = 0;
 
 void MouseHandler(int button, int state, int _x, int _y) {
+  const auto half_width = 400 * (1.0 - border);
   if (button != GLUT_LEFT_BUTTON) {
     return;
   }
 
   active = true;
-  const auto unit = 800 / size;
-  _x = (_x / unit) * unit;
-  _y = (_y / unit) * unit;
-  printf("%d %d\n", _x, _y);
+  const auto unit = (half_width * 2) / size;
+  x = ((_x - half_width) / unit) - 0.25;
+  y = -((_y - half_width) / unit) + 0.25;
 
-  x = (float)_x / 400 - 1.0 + 0.5 * (2.0 / size);
-  y = -(float)_y / 400 + 1.0 - 0.5 * (2.0 / size);
-  // printf("%f %f\n", x, y);
+  x = std::floor(x) * 2 / size;
+  y = std::floor(y) * 2 / size;
+
+  x += 1.0 / size;
+  y += 1.0 / size;
 }
 
 void SpecialKeyHandler(int key, int x, int y) {
@@ -120,57 +122,8 @@ void SpecialKeyHandler(int key, int x, int y) {
 
 void NormalKeyHandler(unsigned char key, int x, int y) {
   switch (key) {
-    // clang-format off
-  case 'q': xangle += 0.05f; break;
-  case 'Q': xangle -= 0.05f; break;
-  case 'a': yangle += 0.05f; break;
-  case 'A': yangle -= 0.05f; break;
-  case 'z': zangle += 0.05f; break;
-  case 'Z': zangle -= 0.05f; break;
-  case '1': aangle += 0.05f; break;
-  case '!': aangle -= 0.05f; break;
-
-  case 'w': xtrans += 0.1f; break;
-  case 'W': xtrans -= 0.1f; break;
-  case 's': ytrans += 0.1f; break;
-  case 'S': ytrans -= 0.1f; break;
-  case 'x': ztrans += 0.1f; break;
-  case 'X': ztrans -= 0.1f; break;
-
-  case 'e': xscale += 0.1f; break;
-  case 'E': xscale -= 0.1f; break;
-  case 'd': yscale += 0.1f; break;
-  case 'D': yscale -= 0.1f; break;
-  case 'c': zscale += 0.1f; break;
-  case 'C': zscale -= 0.1f; break;
-
-  case 'r': camera_loc.x += 0.01f; break;
-  case 'R': camera_loc.x -= 0.01f; break;
-  case 'f': camera_loc.y += 0.01f; break;
-  case 'F': camera_loc.y -= 0.01f; break;
-  case 'v': camera_loc.z += 0.01f; break;
-  case 'V': camera_loc.z -= 0.01f; break;
-
-  case 't': camera_lookat.x += 0.01f; break;
-  case 'T': camera_lookat.x -= 0.01f; break;
-  case 'g': camera_lookat.y += 0.01f; break;
-  case 'G': camera_lookat.y -= 0.01f; break;
-  case 'b': camera_lookat.z += 0.01f; break;
-  case 'B': camera_lookat.z -= 0.01f; break;
-  // clang-format on
-  case ' ':
-    xangle = 0;
-    yangle = 0;
-    zangle = 0;
-    xtrans = 0;
-    ytrans = 0;
-    ztrans = 0;
-    xscale = 1;
-    yscale = 1;
-    zscale = 1;
-    camera_loc = {0.01, 0.02, 0.1};
-    camera_lookat = {0, 0, 0};
-    break;
+  case 'x':
+    exit(0);
   }
 }
 
