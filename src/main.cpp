@@ -13,7 +13,6 @@
 #include "pryamid.h"
 #include "stb_image.h"
 
-#include "global.h"
 #include "loader.hpp"
 
 void ChangeSize(int, int);
@@ -21,6 +20,10 @@ void RenderScene();
 void DisplayTypeMenuCallback(int);
 void ColorModeMenuCallback(int);
 void ModelSelectMenuCallback(int);
+
+struct point {
+  float x, y;
+};
 
 enum DisplayType {
   Point,
@@ -45,22 +48,6 @@ enum ActiveModel {
 };
 
 GLenum glShadeType = GL_SMOOTH;
-float xtrans = 0;
-float ytrans = 0;
-float ztrans = 0;
-
-float xangle = 0;
-float yangle = 0;
-float zangle = 0;
-
-float aangle = 0;
-
-float xscale = 1;
-float yscale = 1;
-float zscale = 1;
-
-float ydelta = .2f;
-float xdelta = .2f;
 
 float clickx = 1;
 float clicky = 1;
@@ -81,111 +68,61 @@ double deg2deg(double deg) { return deg; }
 int size = 10;
 const auto border = 0.05;
 
-bool active = false;
-float x = 0;
-float y = 0;
+#define POINT_COUNT 2
+
+point points[POINT_COUNT];
+int click_index = 0;
+
+void ScreenToView(int ix, int iy, double *ox, double *oy) {
+  const auto half_width = 400 * (1.0 - border);
+  const auto unit = (half_width * 2) / size;
+  double tx = ((ix - half_width) / unit) - 0.25;
+  double ty = -((iy - half_width) / unit) + 0.25;
+
+  tx = (std::floor(tx) * 2 + 1.0) / size;
+  ty = (std::floor(ty) * 2 + 1.0) / size;
+
+  *ox = tx;
+  *oy = ty;
+}
 
 void MouseHandler(int button, int state, int _x, int _y) {
-  const auto half_width = 400 * (1.0 - border);
-  if (button != GLUT_LEFT_BUTTON) {
+  if (button != GLUT_LEFT_BUTTON || state == GLUT_DOWN) {
+    return;
+  }
+  printf("%d\n", click_index);
+
+  if (click_index >= 4) {
     return;
   }
 
-  active = true;
-  const auto unit = (half_width * 2) / size;
-  x = ((_x - half_width) / unit) - 0.25;
-  y = -((_y - half_width) / unit) + 0.25;
+  double tx, ty;
+  ScreenToView(_x, _y, &tx, &ty);
 
-  x = std::floor(x) * 2 / size;
-  y = std::floor(y) * 2 / size;
-
-  x += 1.0 / size;
-  y += 1.0 / size;
-}
-
-void SpecialKeyHandler(int key, int x, int y) {
-  switch (key) {
-  case GLUT_KEY_RIGHT:
-    yangle += 10.0f;
-    break;
-  case GLUT_KEY_LEFT:
-    yangle -= 10.0f;
-    break;
-  case GLUT_KEY_UP:
-    xangle += 10.0f;
-    break;
-  case GLUT_KEY_DOWN:
-    xangle -= 10.0f;
-    break;
+  if (abs(tx) < 1.0 && abs(ty) < 1.0) {
+    points[click_index].x = tx;
+    points[click_index].y = ty;
+    click_index++;
   }
 }
 
+void SpecialKeyHandler(int key, int x, int y) {}
+
 void NormalKeyHandler(unsigned char key, int x, int y) {
   switch (key) {
+  case 'r':
+    click_index = 0;
+    break;
   case 'x':
     exit(0);
   }
 }
-
-// clang-format off
-void rot_x(float theta) {
-  double rot_x[] = {
-      1, 0, 0, 0, //
-      0, cos(deg2deg(theta)), sin(deg2deg(theta)), 0, //
-      0, -sin(deg2deg(theta)), cos(deg2deg(theta)), 0, //
-      0, 0, 0, 1, //
-  };
-  glMultMatrixd(rot_x);
-}
-void rot_y(float theta) {
-  double rot_y[] = {
-      cos(deg2deg(theta)), 0, -sin(deg2deg(theta)), 0, //
-      0, 1, 0, 0, //
-      sin(deg2deg(theta)), 0, cos(deg2deg(theta)), 0, //
-      0, 0, 0, 1, //
-  };
-  glMultMatrixd(rot_y);
-}
-void rot_z(float theta) {
-  double rot_z[] = {
-      cos(deg2deg(theta)), -sin(deg2deg(theta)), 0, 0, //
-      sin(deg2deg(theta)), cos(deg2deg(theta)), 0, 0, //
-      0, 0, 1, 0, //
-      0, 0, 0, 1, //
-  };
-  glMultMatrixd(rot_z);
-}
-// clang-format on
 
 struct Color {
   float r, g, b;
 };
 
 Model m;
-
-Color RandomColor() {
-  const auto r = [] {
-    return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-  };
-
-  return Color{
-      r(),
-      r(),
-      r(),
-  };
-}
-
-Color GetColor() {
-  if (cm == ColorMode::Single) {
-    return Color{
-        1,
-        1,
-        1,
-    };
-  } else {
-    return RandomColor();
-  }
-}
 
 void Size(int value) { size = value; }
 
@@ -240,6 +177,8 @@ void ChangeSize(int w, int h) {
   glLoadIdentity();
 }
 
+double lerp(double a, double b, double t) { return a + (b - a) * t; }
+
 void RenderScene() {
   glClearColor(0, 0, 0, 1.0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -266,39 +205,48 @@ void RenderScene() {
   }
   glEnd();
 
-  if (active) {
-    glPointSize(800.0 / (2 * border + size));
-    glBegin(GL_POINTS);
-    glVertex3f(x, y, 0);
-    glEnd();
+  glPointSize(800.0 / (2 * border + size));
+  glBegin(GL_POINTS);
+  for (int i = 0; i < click_index; ++i) {
+    glVertex3f(points[i].x, points[i].y, 0);
+  }
+  glEnd();
+
+  if (click_index == POINT_COUNT) {
+    for (int i = 0; i < click_index; ++i) {
+      glColor3f(1.0, 0.0, 0.0);
+      glBegin(GL_LINES);
+      const auto next = (i + 1) % click_index;
+      glVertex3f(points[i].x, points[i].y, 0);
+      glVertex3f(points[next].x, points[next].y, 0);
+      glEnd();
+      glColor3f(1.0, 1.0, 1.0);
+
+      printf("%d\n", i);
+      printf("%f %f\n", points[i].x, points[i].y);
+      printf("%f %f\n", points[next].x, points[next].y);
+      const point begin = {points[i].x, points[i].y};
+      const point end = {points[next].x, points[next].y};
+
+      const auto unit = 2.0 / size;
+      const auto x_step = (end.x - begin.x) / size;
+      const auto y_step = (end.y - begin.y) / size;
+      printf("steps: %f %f\n", unit, y_step);
+
+      printf("begin y: %f end y: %f\n", begin.y, end.y);
+      glBegin(GL_POINTS);
+      point p = begin;
+      while (p.x < end.x) {
+        const auto t = (p.x - begin.x) / (end.x - begin.x);
+        const auto y = lerp(begin.y, end.y, t);
+        glVertex3f(p.x, p.y, 0.0);
+
+        p.x += unit;
+      }
+      glEnd();
+      printf("\n");
+    }
   }
 
   glutSwapBuffers();
-}
-
-void DisplayTypeMenuCallback(int value) {
-  dt = static_cast<DisplayType>(value);
-  glutPostRedisplay();
-}
-
-void ColorModeMenuCallback(int value) {
-  cm = static_cast<ColorMode>(value);
-  glutPostRedisplay();
-}
-
-void ModelSelectMenuCallback(int value) {
-  switch (static_cast<ActiveModel>(value)) {
-  case Gourd:
-    load_model("../assets/gourd.obj", m);
-    break;
-  case Octahedron:
-    load_model("../assets/octahedron.obj", m);
-    break;
-  case Teapot:
-    load_model("../assets/teapot.obj", m);
-    break;
-  case Teddy:
-    load_model("../assets/teddy.obj", m);
-    break;
-  }
 }
