@@ -68,7 +68,7 @@ double deg2deg(double deg) { return deg; }
 int size = 10;
 const auto border = 0.05;
 
-#define POINT_COUNT 2
+#define POINT_COUNT 4
 
 point points[POINT_COUNT];
 int click_index = 0;
@@ -92,7 +92,7 @@ void MouseHandler(int button, int state, int _x, int _y) {
   }
   printf("%d\n", click_index);
 
-  if (click_index >= 4) {
+  if (click_index >= POINT_COUNT) {
     return;
   }
 
@@ -127,18 +127,6 @@ Model m;
 void Size(int value) { size = value; }
 
 int main(int argc, char **argv) {
-  int err;
-  if (argc == 2) {
-    err = load_model(argv[1], m);
-  } else {
-    printf("loading default model\n");
-    err = load_model("../assets/octahedron.obj", m);
-  }
-
-  if (err != 0) {
-    return 1;
-  }
-
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutInitWindowSize(800, 800);
@@ -222,29 +210,62 @@ void RenderScene() {
       glEnd();
       glColor3f(1.0, 1.0, 1.0);
 
-      printf("%d\n", i);
-      printf("%f %f\n", points[i].x, points[i].y);
-      printf("%f %f\n", points[next].x, points[next].y);
+      // printf("%d\n", i);
+      // printf("%f %f\n", points[i].x, points[i].y);
+      // printf("%f %f\n", points[next].x, points[next].y);
       const point begin = {points[i].x, points[i].y};
       const point end = {points[next].x, points[next].y};
 
-      const auto unit = 2.0 / size;
-      const auto x_step = (end.x - begin.x) / size;
-      const auto y_step = (end.y - begin.y) / size;
-      printf("steps: %f %f\n", unit, y_step);
+      const auto x1 = begin.x;
+      const auto y1 = begin.y;
+      const auto x2 = end.x;
+      const auto y2 = end.y;
 
-      printf("begin y: %f end y: %f\n", begin.y, end.y);
+      // const auto x1 = std::min(begin.x, end.x);
+      // const auto y1 = std::min(begin.y, end.y);
+      // const auto x2 = std::max(begin.x, end.x);
+      // const auto y2 = std::max(begin.y, end.y);
+
+      const auto dx = abs(x2 - x1);
+      const auto dy = abs(y2 - y1);
+
+      const auto step = 2.0 / size;
+
+      const auto sign_x = (x2 - x1) > 0 ? step : -step;
+      const auto sign_y = (y2 - y1) > 0 ? step : -step;
+
+      auto x = x1;
+      auto y = y1;
+
+      float p;
+
       glBegin(GL_POINTS);
-      point p = begin;
-      while (p.x < end.x) {
-        const auto t = (p.x - begin.x) / (end.x - begin.x);
-        const auto y = lerp(begin.y, end.y, t);
-        glVertex3f(p.x, p.y, 0.0);
-
-        p.x += unit;
+      if (dx > dy) {
+        p = 2 * dy - dx;
+        while (std::abs(x - x2) > 0.01) {
+          glVertex3f(x, y, 0);
+          x += sign_x;
+          if (p < 0)
+            p += 2 * dy;
+          else {
+            p += 2 * (dy - dx);
+            y += sign_y;
+          }
+        }
+      } else {
+        p = 2 * dx - dy;
+        while (std::abs(y - y2) > 0.01) {
+          glVertex3f(x, y, 0);
+          y += sign_y;
+          if (p < 0)
+            p += 2 * dx;
+          else {
+            p += 2 * (dx - dy);
+            x += sign_x;
+          }
+        }
       }
       glEnd();
-      printf("\n");
     }
   }
 
