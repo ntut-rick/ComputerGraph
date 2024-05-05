@@ -25,28 +25,6 @@ struct point {
   float x, y;
 };
 
-enum DisplayType {
-  Point,
-  Line,
-  Face,
-};
-
-DisplayType dt = DisplayType::Face;
-
-enum ColorMode {
-  Single,
-  Random,
-};
-
-ColorMode cm = ColorMode::Random;
-
-enum ActiveModel {
-  Gourd,
-  Octahedron,
-  Teapot,
-  Teddy,
-};
-
 GLenum glShadeType = GL_SMOOTH;
 
 float clickx = 1;
@@ -90,7 +68,7 @@ void MouseHandler(int button, int state, int _x, int _y) {
   if (button != GLUT_LEFT_BUTTON || state == GLUT_DOWN) {
     return;
   }
-  printf("%d\n", click_index);
+  // printf("%d\n", click_index);
 
   if (click_index >= POINT_COUNT) {
     return;
@@ -124,7 +102,50 @@ struct Color {
 
 Model m;
 
-void Size(int value) { size = value; }
+void Size(int value) {
+  size = value;
+  click_index = 0;
+}
+
+void print_info(point p1, point p2) {
+  const auto dx = p2.x - p1.x;
+  const auto dy = p2.y - p1.y;
+
+  const auto s = abs(dy / dx);
+
+  if (dx > 0 && dy > 0 && s <= 1.0) {
+    printf("region 1\n");
+    return;
+  }
+  if (dx > 0 && dy > 0 && s > 1.0) {
+    printf("region 2\n");
+    return;
+  }
+  if (dx <= 0 && dy > 0 && s > 1.0) {
+    printf("region 3\n");
+    return;
+  }
+  if (dx <= 0 && dy > 0 && s <= 1.0) {
+    printf("region 4\n");
+    return;
+  }
+  if (dx <= 0 && dy <= 0 && s <= 1.0) {
+    printf("region 5\n");
+    return;
+  }
+  if (dx <= 0 && dy <= 0 && s > 1.0) {
+    printf("region 6\n");
+    return;
+  }
+  if (dx > 0 && dy <= 0 && s > 1.0) {
+    printf("region 7\n");
+    return;
+  }
+  if (dx > 0 && dy <= 0 && s <= 1.0) {
+    printf("region 8\n");
+    return;
+  }
+}
 
 int main(int argc, char **argv) {
   glutInit(&argc, argv);
@@ -155,6 +176,7 @@ int main(int argc, char **argv) {
   glutMainLoop(); // http://www.programmer-club.com.tw/ShowSameTitleN/opengl/2288.html
   return 0;
 }
+
 void ChangeSize(int w, int h) {
   // printf("Window Size= %d X %d\n", w, h);
   glViewport(0, 0, w, h);
@@ -164,8 +186,6 @@ void ChangeSize(int w, int h) {
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 }
-
-double lerp(double a, double b, double t) { return a + (b - a) * t; }
 
 void RenderScene() {
   glClearColor(0, 0, 0, 1.0);
@@ -193,26 +213,26 @@ void RenderScene() {
   }
   glEnd();
 
-  glPointSize(800.0 / (2 * border + size));
+  glColor3f(1.0, 0.0, 0.0);
+  glPointSize((800.0 * (1.0 - border)) / size);
   glBegin(GL_POINTS);
   for (int i = 0; i < click_index; ++i) {
     glVertex3f(points[i].x, points[i].y, 0);
   }
   glEnd();
+  glColor3f(1.0, 1.0, 1.0);
 
   if (click_index == POINT_COUNT) {
     for (int i = 0; i < click_index; ++i) {
-      glColor3f(1.0, 0.0, 0.0);
-      glBegin(GL_LINES);
-      const auto next = (i + 1) % click_index;
-      glVertex3f(points[i].x, points[i].y, 0);
-      glVertex3f(points[next].x, points[next].y, 0);
-      glEnd();
-      glColor3f(1.0, 1.0, 1.0);
+      printf("P%d: %f %f\n", i + 1, points[i].x, points[i].y);
+    }
 
-      // printf("%d\n", i);
-      // printf("%f %f\n", points[i].x, points[i].y);
-      // printf("%f %f\n", points[next].x, points[next].y);
+    for (int i = 0; i < click_index; ++i) {
+      const auto next = (i + 1) % click_index;
+
+      printf("P%d-P%d: ", i + 1, next + 1);
+      print_info(points[i], points[next]);
+
       const point begin = {points[i].x, points[i].y};
       const point end = {points[next].x, points[next].y};
 
@@ -220,11 +240,6 @@ void RenderScene() {
       const auto y1 = begin.y;
       const auto x2 = end.x;
       const auto y2 = end.y;
-
-      // const auto x1 = std::min(begin.x, end.x);
-      // const auto y1 = std::min(begin.y, end.y);
-      // const auto x2 = std::max(begin.x, end.x);
-      // const auto y2 = std::max(begin.y, end.y);
 
       const auto dx = abs(x2 - x1);
       const auto dy = abs(y2 - y1);
