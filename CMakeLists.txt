@@ -11,6 +11,7 @@ set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 # set(INCLUDE_FILE)
 # set(SRC_FILES)
 set(OpenGL_GL_PREFERENCE LEGACY)
+set(FREEGLUT_BUILD_DEMOS OFF)
 add_subdirectory(thirdparty/freeglut)
 
 # you need pre-install OpenGL, GLU, please google
@@ -26,6 +27,7 @@ add_executable(${PROJECT_NAME}
 )
 target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} ${OPENGL_glu_LIBRARY})
 target_link_libraries(${PROJECT_NAME} freeglut_static)
+target_compile_definitions(${PROJECT_NAME} PRIVATE GL_SILENCE_DEPRECATION)
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/thirdparty/freeglut/include/GL
     ${CMAKE_SOURCE_DIR}/thirdparty/tinyobj_loader_c/
