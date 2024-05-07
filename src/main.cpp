@@ -5,6 +5,7 @@
 #include <memory>
 #include <ostream>
 #include <vector>
+#include <algorithm>
 
 /*** freeglut***/
 #include <freeglut.h>
@@ -63,11 +64,11 @@ float zoomingScaler = 0.9;
 
 int kDimenstion = 10;
 struct { int x,y; } selectedPosition = {0,0};
+struct vec2i_t {
+  int x,y;
+};
 
-struct kMouseDragLine_t {
-  struct {int x,y;} start, end;
-} kMouseDragLine;
-std::vector<struct kMouseDragLine_t> kLines;
+std::vector<vec2i_t> kPoints;
 
 int main(int argc, char **argv) {
   glutInit(&argc, argv);
@@ -231,7 +232,7 @@ void drawLine(int X1, int Y1, int X2, int Y2) {
     for (int y=1; y<dy; y++) {
       if (d < 0) {
         // E or East is chosen 
-        d = d + dx; 
+        d = d + dx;
         glColor3f(0, 1, 0);
       } else { 
         // NE or North East is chosen 
@@ -246,15 +247,46 @@ void drawLine(int X1, int Y1, int X2, int Y2) {
   }
 }
 
+int determinant(vec2i_t p1, vec2i_t p2, vec2i_t p) {
+  return p1.x * (p2.y - p.y) +
+         p2.x * (p.y - p1.y) +
+         p.x * (p1.y - p2.y);
+}
+
+void fillTriangle(vec2i_t p1, vec2i_t p2, vec2i_t p3) {
+  auto top = std::max({p1.y, p2.y, p3.y});
+  auto bottom = std::min({p1.y, p2.y, p3.y});
+  auto right = std::max({p1.x, p2.x, p3.x});
+  auto left = std::min({p1.x, p2.x, p3.x});
+  for (auto x=left; x<=right; ++x) 
+  for (auto y=bottom; y<=top; ++y) {
+    if (
+      determinant(p1, p2, {x,y}) >0
+      && determinant(p2, p3, {x,y}) >0
+      && determinant(p3, p1, {x,y}) >0
+    ) { // CCW
+      glColor3f(1, 1, 0);
+      drawPoint(x, y);
+    }
+    if(
+      determinant(p1, p2, {x,y}) <0
+      && determinant(p2, p3, {x,y}) <0
+      && determinant(p3, p1, {x,y}) <0
+    ) { // CW
+      glColor3f(1,0,1);
+      drawPoint(x, y);
+    }
+  }
+}
+
 
 void drawGrid() {
   const auto realsize = kDimenstion*2+1;
   const float size = 20.0f/realsize;
   const float halfsize = size/2;
-  for(int i=-kDimenstion; i<=kDimenstion; i++) {
-    for(int j=-kDimenstion; j<=kDimenstion; j++) {
-      drawPoint(i,j,GL_LINE_LOOP);
-    }
+  for(int i=-kDimenstion; i<=kDimenstion; i++)
+  for(int j=-kDimenstion; j<=kDimenstion; j++) {
+    drawPoint(i,j,GL_LINE_LOOP);
   }
 }
 
@@ -287,23 +319,17 @@ void RenderScene(void) {
   drawGrid();
 
   glColor3f(1, 0, 0);
-    drawPoint(kMouseDragLine.start.x, kMouseDragLine.start.y);
-    drawPoint(kMouseDragLine.end.x, kMouseDragLine.end.y);
+  for(const auto& p : kPoints) {
+    drawPoint(p.x, p.y);
+  };
+  for(int i = 0; i< kPoints.size()/3 ; ++i) {
     glColor3f(0, 1, 0);
-    drawLine(
-      kMouseDragLine.start.x, kMouseDragLine.start.y,
-      kMouseDragLine.end.x, kMouseDragLine.end.y
-    );
-  for (auto line : kLines) {
-    glColor3f(1, 0, 0);
-    drawPoint(line.start.x, line.start.y);
-    drawPoint(line.end.x, line.end.y);
-    glColor3f(0, 1, 0);
-    drawLine(
-      line.start.x, line.start.y,
-      line.end.x, line.end.y
-    );
-  }
+    const auto r = kPoints.cbegin() + i*3;
+    drawLine(r[0].x, r[0].y, r[1].x, r[1].y);
+    drawLine(r[1].x, r[1].y, r[2].x, r[2].y);
+    drawLine(r[2].x, r[2].y, r[0].x, r[0].y);
+    fillTriangle(r[0], r[1], r[2]);
+  };
 
   glutSwapBuffers();
 }
@@ -334,15 +360,9 @@ void magicTransform(int wx, int wy, int *x, int *y) {
 
 void MousePress(int button, int state, int x, int y) {
   if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-    magicTransform(x,y,
-      &kMouseDragLine.start.x,
-      &kMouseDragLine.start.y);
-    magicTransform(x,y,
-      &kMouseDragLine.end.x,
-      &kMouseDragLine.end.y);
-  }
-  if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
-    kLines.push_back(kMouseDragLine);
+    vec2i_t a;
+    magicTransform(x,y, &a.x, &a.y);
+    kPoints.push_back(a);
   }
   glutPostRedisplay();
 }
@@ -360,10 +380,6 @@ void mouseWheel(int button, int dir, int x, int y)
   glutPostRedisplay();
 }
 void my_glutcb_mousedrag(int x, int y) {
-    magicTransform(x,y,
-      &kMouseDragLine.end.x,
-      &kMouseDragLine.end.y);
-  glutPostRedisplay();
 }
 
 void MenuCallback(int value) {
