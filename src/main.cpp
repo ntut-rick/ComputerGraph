@@ -248,6 +248,9 @@ void drawLine(int X1, int Y1, int X2, int Y2) {
 }
 
 int determinant(vec2i_t p1, vec2i_t p2, vec2i_t p) {
+  // | p1.x p1.y 1 |
+  // | p2.x p2.y 1 |
+  // | p.x  p.y  1 |
   return p1.x * (p2.y - p.y) +
          p2.x * (p.y - p1.y) +
          p.x * (p1.y - p2.y);
@@ -258,6 +261,8 @@ void fillTriangle(vec2i_t p1, vec2i_t p2, vec2i_t p3) {
   auto bottom = std::min({p1.y, p2.y, p3.y});
   auto right = std::max({p1.x, p2.x, p3.x});
   auto left = std::min({p1.x, p2.x, p3.x});
+  // https://en.wikipedia.org/wiki/Triple_product
+  // https://en.wikipedia.org/wiki/Area_of_a_triangle
   for (auto x=left; x<=right; ++x) 
   for (auto y=bottom; y<=top; ++y) {
     if (
