@@ -6,6 +6,7 @@
 #include <ostream>
 #include <vector>
 #include <algorithm>
+#include <queue>
 
 /*** freeglut***/
 #include <freeglut.h>
@@ -70,6 +71,23 @@ struct vec2i_t {
 
 std::vector<vec2i_t> kPoints;
 
+std::queue<vec2i_t> kQueue;
+std::vector<vec2i_t> kFilled;
+
+/* Called back when timer expired */
+void Timer(int value) {
+  static unsigned int refreshMills = 500;
+
+  if (!kQueue.empty()) {
+    kFilled.push_back(kQueue.front());
+    printf("pop!\n");
+    kQueue.pop();
+  }
+  
+  glutPostRedisplay();      // Post re-paint request to activate display()
+  glutTimerFunc(refreshMills, Timer, 0); // next Timer call milliseconds later
+}
+
 int main(int argc, char **argv) {
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
@@ -90,6 +108,7 @@ int main(int argc, char **argv) {
   glutMouseWheelFunc(mouseWheel);
   glutMouseFunc(MousePress);
   glutMotionFunc(my_glutcb_mousedrag);
+  glutTimerFunc(0, Timer, 0);
 
   glutDisplayFunc(RenderScene);
   glutMainLoop(); // http://www.programmer-club.com.tw/ShowSameTitleN/opengl/2288.html
@@ -195,6 +214,9 @@ void drawPoint(int x, int y, GLenum mode=GL_QUADS) {
     glVertex3f(x*size+halfsize, y*size-halfsize, 0);
   glEnd();
 }
+void drawPoint2(int x, int y) {
+  void drawPoint(int x, int y, GLenum mode=GL_QUADS);
+}
 
 // ref: https://www.geeksforgeeks.org/mid-point-line-generation-algorithm/
 void drawLine(int X1, int Y1, int X2, int Y2) {
@@ -256,7 +278,15 @@ int determinant(vec2i_t p1, vec2i_t p2, vec2i_t p) {
          p.x * (p1.y - p2.y);
 }
 
-void fillTriangle(vec2i_t p1, vec2i_t p2, vec2i_t p3) {
+void pushDrawPoint(int x, int y) {
+  printf("push!\n");
+  kQueue.push({x, y});
+}
+
+void fillTriangle(
+  vec2i_t p1, vec2i_t p2, vec2i_t p3,
+  void (*drawPointFunc)(int, int) = drawPoint2
+) {
   auto top = std::max({p1.y, p2.y, p3.y});
   auto bottom = std::min({p1.y, p2.y, p3.y});
   auto right = std::max({p1.x, p2.x, p3.x});
@@ -271,7 +301,7 @@ void fillTriangle(vec2i_t p1, vec2i_t p2, vec2i_t p3) {
       && determinant(p3, p1, {x,y}) >0
     ) { // CCW
       glColor3f(1, 1, 0);
-      drawPoint(x, y);
+      drawPointFunc(x, y);
     }
     if(
       determinant(p1, p2, {x,y}) <0
@@ -279,7 +309,7 @@ void fillTriangle(vec2i_t p1, vec2i_t p2, vec2i_t p3) {
       && determinant(p3, p1, {x,y}) <0
     ) { // CW
       glColor3f(1,0,1);
-      drawPoint(x, y);
+      drawPointFunc(x, y);
     }
   }
 }
@@ -333,9 +363,12 @@ void RenderScene(void) {
     drawLine(r[0].x, r[0].y, r[1].x, r[1].y);
     drawLine(r[1].x, r[1].y, r[2].x, r[2].y);
     drawLine(r[2].x, r[2].y, r[0].x, r[0].y);
-    fillTriangle(r[0], r[1], r[2]);
+    // fillTriangle(r[0], r[1], r[2]);
   };
-
+  for (int i=0; i<kFilled.size(); ++i) {
+    const auto r = kFilled[i];
+    drawPoint(r.x, r.y);
+  }
   glutSwapBuffers();
 }
 
@@ -368,6 +401,17 @@ void MousePress(int button, int state, int x, int y) {
     vec2i_t a;
     magicTransform(x,y, &a.x, &a.y);
     kPoints.push_back(a);
+    static int f = 0;
+    if(kPoints.size() >= f+3) {
+      printf("compltate 1 trignalee\n");
+      fillTriangle(
+        kPoints[f],
+        kPoints[f+1],
+        kPoints[f+2],
+        pushDrawPoint
+      );
+      f+=3;
+    }
   }
   glutPostRedisplay();
 }
