@@ -42,10 +42,18 @@ float clicky = 1;
 Vertex camera_loc = {0.01, 0.02, 0.1};
 Vertex camera_lookat = {0, 0, 0};
 
-void Loop() {
-  // yangle += ydelta;
-  // xangle += xdelta;
+bool checked = false;
+std::vector<point> to_draw;
+std::size_t draw_index = 0;
+
+int refreshMills = 100;
+
+void Timer(int value) {
   glutPostRedisplay();
+  glutTimerFunc(refreshMills, Timer, 0);
+  if (draw_index < to_draw.size()) {
+    draw_index++;
+  }
 }
 
 #define PI 3.14159265358979323846
@@ -102,6 +110,9 @@ void NormalKeyHandler(unsigned char key, int x, int y) {
   case 'r':
     triangle_count = 0;
     click_index = 0;
+    checked = false;
+    to_draw.clear();
+    draw_index = 0;
     break;
   case 'x':
     exit(0);
@@ -185,7 +196,7 @@ int main(int argc, char **argv) {
 
   glutReshapeFunc(ChangeSize);
   glutDisplayFunc(RenderScene);
-  glutIdleFunc(Loop);
+  glutTimerFunc(0, Timer, 0);
   glutMainLoop(); // http://www.programmer-club.com.tw/ShowSameTitleN/opengl/2288.html
   return 0;
 }
@@ -307,16 +318,22 @@ void RenderScene() {
 
     printf("%f %f %f %f\n", max_x, max_y, min_x, min_y);
 
+    if (!checked) {
+      for (float x = min_x; x < max_x; x += 2.0 / size) {
+        for (float y = min_y; y < max_y; y += 2.0 / size) {
+          if (isLeft(p0, p1, point{x, y}) && isLeft(p1, p2, point{x, y}) &&
+              isLeft(p2, p0, point{x, y})) {
+            to_draw.push_back(point{x, y});
+          }
+        }
+      }
+      checked = true;
+    }
     glColor3f(0.0, 0.0, 1.0);
     glPointSize((800.0 * (1.0 - border)) / size);
     glBegin(GL_POINTS);
-    for (float x = min_x; x < max_x; x += 2.0 / size) {
-      for (float y = min_y; y < max_y; y += 2.0 / size) {
-        if (isLeft(p0, p1, point{x, y}) && isLeft(p1, p2, point{x, y}) &&
-            isLeft(p2, p0, point{x, y})) {
-          glVertex3f(x, y, 0.0);
-        }
-      }
+    for (std::size_t i = 0; i < draw_index; ++i) {
+      glVertex3f(to_draw[i].x, to_draw[i].y, 0);
     }
     glEnd();
     glColor3f(1.0, 1.0, 1.0);
