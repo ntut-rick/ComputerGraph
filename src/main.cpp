@@ -76,7 +76,7 @@ std::vector<vec2i_t> kFilled;
 
 /* Called back when timer expired */
 void Timer(int value) {
-  static unsigned int refreshMills = 500;
+  const unsigned int refreshMills = 10;
 
   if (!kQueue.empty()) {
     kFilled.push_back(kQueue.front());
@@ -365,6 +365,7 @@ void RenderScene(void) {
     drawLine(r[2].x, r[2].y, r[0].x, r[0].y);
     // fillTriangle(r[0], r[1], r[2]);
   };
+  glColor3f(1,1,0);
   for (int i=0; i<kFilled.size(); ++i) {
     const auto r = kFilled[i];
     drawPoint(r.x, r.y);
