@@ -26,8 +26,13 @@ void DisplayTypeMenuCallback(int);
 void ColorModeMenuCallback(int);
 void ModelSelectMenuCallback(int);
 
+struct Color {
+  float r, g, b;
+};
+
 struct point {
   float x, y;
+  Color c;
 };
 
 struct triangle {
@@ -46,16 +51,6 @@ bool checked = false;
 std::vector<point> to_draw;
 std::size_t draw_index = 0;
 
-int refreshMills = 100;
-
-void Timer(int value) {
-  glutPostRedisplay();
-  glutTimerFunc(refreshMills, Timer, 0);
-  if (draw_index < to_draw.size()) {
-    draw_index++;
-  }
-}
-
 #define PI 3.14159265358979323846
 
 double deg2deg(double deg) { return deg; }
@@ -66,8 +61,30 @@ const auto border = 0.05;
 #define MAX_POINT_COUNT 100
 
 triangle triangles[MAX_POINT_COUNT];
+point points[MAX_POINT_COUNT];
 int triangle_count = 0;
 int click_index = 0;
+
+std::vector<point> line_points;
+std::vector<point> fill_points;
+
+int fill_index = 0;
+
+bool finished = false;
+
+int refreshMills = 100;
+
+void Timer(int value) {
+  glutPostRedisplay();
+  glutTimerFunc(refreshMills, Timer, 0);
+  if (draw_index < to_draw.size()) {
+    draw_index++;
+  }
+
+  if (fill_index < fill_points.size()) {
+    fill_index++;
+  }
+}
 
 void ScreenToView(int ix, int iy, double *ox, double *oy) {
   const auto half_width = 400 * (1.0 - border);
@@ -82,6 +99,14 @@ void ScreenToView(int ix, int iy, double *ox, double *oy) {
   *oy = ty + 1.0;
 }
 
+Color randColor() {
+  return Color{
+      float(rand()) / RAND_MAX,
+      float(rand()) / RAND_MAX,
+      float(rand()) / RAND_MAX,
+  };
+}
+
 void MouseHandler(int button, int state, int _x, int _y) {
   if (button != GLUT_LEFT_BUTTON || state == GLUT_DOWN) {
     return;
@@ -92,14 +117,16 @@ void MouseHandler(int button, int state, int _x, int _y) {
   ScreenToView(_x, _y, &tx, &ty);
 
   if (tx <= 2.0 && ty <= 2.0) {
-    triangles[triangle_count].points[click_index].x = tx;
-    triangles[triangle_count].points[click_index].y = ty;
-    click_index++;
-  }
+    if (click_index > 1 && std::abs(points[0].x - tx) < 0.001 &&
+        std::abs(points[0].y - ty) < 0.001) {
+      finished = true;
+      return;
+    }
 
-  if (click_index == 3) {
-    triangle_count++;
-    click_index = 0;
+    points[click_index].x = tx;
+    points[click_index].y = ty;
+    points[click_index].c = randColor();
+    click_index++;
   }
 }
 
@@ -108,20 +135,16 @@ void SpecialKeyHandler(int key, int x, int y) {}
 void NormalKeyHandler(unsigned char key, int x, int y) {
   switch (key) {
   case 'r':
-    triangle_count = 0;
     click_index = 0;
-    checked = false;
-    to_draw.clear();
-    draw_index = 0;
+    finished = false;
+    line_points.clear();
+    fill_points.clear();
+    fill_index = 0;
     break;
   case 'x':
     exit(0);
   }
 }
-
-struct Color {
-  float r, g, b;
-};
 
 Model m;
 
@@ -129,46 +152,6 @@ void Size(int value) {
   size = value;
   triangle_count = 0;
   click_index = 0;
-}
-
-void print_info(point p1, point p2) {
-  const auto dx = p2.x - p1.x;
-  const auto dy = p2.y - p1.y;
-
-  const auto s = abs(dy / dx);
-
-  if (dx > 0 && dy > 0 && s <= 1.0) {
-    printf("region 1\n");
-    return;
-  }
-  if (dx > 0 && dy > 0 && s > 1.0) {
-    printf("region 2\n");
-    return;
-  }
-  if (dx <= 0 && dy > 0 && s > 1.0) {
-    printf("region 3\n");
-    return;
-  }
-  if (dx <= 0 && dy > 0 && s <= 1.0) {
-    printf("region 4\n");
-    return;
-  }
-  if (dx <= 0 && dy <= 0 && s <= 1.0) {
-    printf("region 5\n");
-    return;
-  }
-  if (dx <= 0 && dy <= 0 && s > 1.0) {
-    printf("region 6\n");
-    return;
-  }
-  if (dx > 0 && dy <= 0 && s > 1.0) {
-    printf("region 7\n");
-    return;
-  }
-  if (dx > 0 && dy <= 0 && s <= 1.0) {
-    printf("region 8\n");
-    return;
-  }
 }
 
 int main(int argc, char **argv) {
@@ -211,7 +194,27 @@ void ChangeSize(int w, int h) {
   glLoadIdentity();
 }
 
-void DrawLine(point p1, point p2) {
+float lerp(float a, float b, float t) { return a + (b - a) * t; }
+
+float lerp2d(point a, point b, point t) {
+  const auto total =
+      std::sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
+
+  const auto delta =
+      std::sqrt((t.x - a.x) * (t.x - a.x) + (t.y - a.y) * (t.y - a.y));
+
+  return delta / total;
+}
+
+Color colorLerp(Color a, Color b, float t) {
+  return Color{
+      lerp(a.r, b.r, t),
+      lerp(a.g, b.g, t),
+      lerp(a.b, b.b, t),
+  };
+}
+
+void DrawLine(point p1, point p2, std::vector<point> &points) {
   const auto x1 = p1.x;
   const auto y1 = p1.y;
   const auto x2 = p2.x;
@@ -230,11 +233,12 @@ void DrawLine(point p1, point p2) {
 
   float p;
 
-  glBegin(GL_POINTS);
   if (dx > dy) {
     p = 2 * dy - dx;
     while (std::abs(x - x2) > 0.01) {
-      glVertex3f(x, y, 0);
+      const auto t = lerp2d(p1, p2, point{x, y});
+      const auto c = colorLerp(p1.c, p2.c, t);
+      points.push_back(point{x, y, c});
       x += sign_x;
       if (p < 0)
         p += 2 * dy;
@@ -246,7 +250,9 @@ void DrawLine(point p1, point p2) {
   } else {
     p = 2 * dx - dy;
     while (std::abs(y - y2) > 0.01) {
-      glVertex3f(x, y, 0);
+      const auto t = lerp2d(p1, p2, point{x, y});
+      const auto c = colorLerp(p1.c, p2.c, t);
+      points.push_back(point{x, y, c});
       y += sign_y;
       if (p < 0)
         p += 2 * dx;
@@ -256,7 +262,6 @@ void DrawLine(point p1, point p2) {
       }
     }
   }
-  glEnd();
 }
 
 bool isLeft(point p1, point p2, point p) {
@@ -289,12 +294,11 @@ void RenderScene() {
   }
   glEnd();
 
-  glColor3f(1.0, 0.0, 0.0);
   glPointSize((800.0 * (1.0 - border)) / size);
   glBegin(GL_POINTS);
-  for (int i = 0; i < triangle_count * 3 + click_index; ++i) {
-    glVertex3f(triangles[i / 3].points[i % 3].x,
-               triangles[i / 3].points[i % 3].y, 0);
+  for (int i = 0; i < click_index; ++i) {
+    glColor3f(points[i].c.r, points[i].c.g, points[i].c.b);
+    glVertex3f(points[i].x, points[i].y, 0);
   }
   glEnd();
   glColor3f(1.0, 1.0, 1.0);
@@ -303,41 +307,41 @@ void RenderScene() {
   //   printf("P%d: %f %f\n", i + 1, points[i].x, points[i].y);
   // }
 
-  for (int i = 0; i < triangle_count; ++i) {
-    const auto p0 = triangles[i].points[0];
-    const auto p1 = triangles[i].points[1];
-    const auto p2 = triangles[i].points[2];
-    DrawLine(p0, p1);
-    DrawLine(p1, p2);
-    DrawLine(p2, p0);
+  if (finished) {
+    for (auto i = 0; i < click_index; ++i) {
+      const auto next = (i + 1) % click_index;
+      DrawLine(points[i], points[next], line_points);
+    }
 
-    const auto max_x = std::max({p0.x, p1.x, p2.x});
-    const auto max_y = std::max({p0.y, p1.y, p2.y});
-    const auto min_x = std::min({p0.x, p1.x, p2.x});
-    const auto min_y = std::min({p0.y, p1.y, p2.y});
-
-    printf("%f %f %f %f\n", max_x, max_y, min_x, min_y);
-
-    if (!checked) {
-      for (float x = min_x; x < max_x; x += 2.0 / size) {
-        for (float y = min_y; y < max_y; y += 2.0 / size) {
-          if (isLeft(p0, p1, point{x, y}) && isLeft(p1, p2, point{x, y}) &&
-              isLeft(p2, p0, point{x, y})) {
-            to_draw.push_back(point{x, y});
+    for (float i = 1. / size; i < 2.1; i += 2. / size) {
+      std::vector<point> f;
+      for (float j = 1. / size; j < 2.1; j += 2. / size) {
+        for (const auto &p : line_points) {
+          if (std::abs(p.x - j) < 0.001 && std::abs(p.y - i) < 0.001) {
+            f.push_back(p);
           }
         }
       }
-      checked = true;
+      if (f.size() >= 2) {
+        DrawLine(f[0], f[f.size() - 1], fill_points);
+      }
     }
-    glColor3f(0.0, 0.0, 1.0);
-    glPointSize((800.0 * (1.0 - border)) / size);
-    glBegin(GL_POINTS);
-    for (std::size_t i = 0; i < draw_index; ++i) {
-      glVertex3f(to_draw[i].x, to_draw[i].y, 0);
-    }
-    glEnd();
-    glColor3f(1.0, 1.0, 1.0);
+
+    finished = false;
   }
+
+  glBegin(GL_POINTS);
+  for (const auto &p : line_points) {
+    glColor3f(p.c.r, p.c.g, p.c.b);
+    glVertex3f(p.x, p.y, 0);
+  }
+
+  for (int i = 0; i < fill_index; ++i) {
+    glColor3f(fill_points[i].c.r, fill_points[i].c.g, fill_points[i].c.b);
+    glVertex3f(fill_points[i].x, fill_points[i].y, 0);
+  }
+  glEnd();
+  glColor3f(1, 1, 1);
 
   glutSwapBuffers();
 }
