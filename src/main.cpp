@@ -74,6 +74,9 @@ bool finished = false;
 
 int refreshMills = 100;
 
+#define PRECISION 0.001
+bool feq(float a, float b) { return std::abs(a - b) < PRECISION; }
+
 void Timer(int value) {
   glutPostRedisplay();
   glutTimerFunc(refreshMills, Timer, 0);
@@ -117,8 +120,7 @@ void MouseHandler(int button, int state, int _x, int _y) {
   ScreenToView(_x, _y, &tx, &ty);
 
   if (tx <= 2.0 && ty <= 2.0) {
-    if (click_index > 1 && std::abs(points[0].x - tx) < 0.001 &&
-        std::abs(points[0].y - ty) < 0.001) {
+    if (click_index > 1 && feq(points[0].x, tx) && feq(points[0].y, ty)) {
       finished = true;
       return;
     }
@@ -235,7 +237,7 @@ void DrawLine(point p1, point p2, std::vector<point> &points) {
 
   if (dx > dy) {
     p = 2 * dy - dx;
-    while (std::abs(x - x2) > 0.01) {
+    while (!feq(x, x2)) {
       const auto t = lerp2d(p1, p2, point{x, y});
       const auto c = colorLerp(p1.c, p2.c, t);
       points.push_back(point{x, y, c});
@@ -249,7 +251,7 @@ void DrawLine(point p1, point p2, std::vector<point> &points) {
     }
   } else {
     p = 2 * dx - dy;
-    while (std::abs(y - y2) > 0.01) {
+    while (!feq(y, y2)) {
       const auto t = lerp2d(p1, p2, point{x, y});
       const auto c = colorLerp(p1.c, p2.c, t);
       points.push_back(point{x, y, c});
@@ -317,7 +319,7 @@ void RenderScene() {
       std::vector<point> f;
       for (float j = 1. / size; j < 2.1; j += 2. / size) {
         for (const auto &p : line_points) {
-          if (std::abs(p.x - j) < 0.001 && std::abs(p.y - i) < 0.001) {
+          if (feq(p.x, j) && feq(p.y, i)) {
             f.push_back(p);
           }
         }
