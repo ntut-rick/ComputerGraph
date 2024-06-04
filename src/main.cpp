@@ -1,11 +1,10 @@
 #include <iostream>
 #include <math.h>
 #include <stdlib.h>
-
-#include <freeglut.h>
-
+#include <string>
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include "stb_image.h"
+#include <freeglut.h>
 
 // Lighting data
 GLfloat lightAmbient[] = {0.2f, 0.2f, 0.2f, 1.0f};
@@ -65,7 +64,7 @@ void RenderScene(void) {
 
     glDisable(GL_TEXTURE_2D);
   } else {
-    glColor3f(0.0f, 0.0f, 0.90f); // Blue
+    // glColor3f(0.0f, 0.0f, 0.90f); // Blue
     glBegin(GL_QUADS);
     glVertex3f(-100.0f, -25.3f, -100.0f);
     glVertex3f(-100.0f, -25.3f, 100.0f);
@@ -145,24 +144,40 @@ void RenderScene(void) {
   glutSwapBuffers();
 }
 
-void LoadTexture(std::string path, GLuint texture) {
-  int width, height, channels;
-  const auto data = stbi_load(path.c_str(), &width, &height, &channels,
-                              0); // 利用openCV讀取圖片檔案
-
-  if (data == NULL) {
-    std::cout << path << " empty\n";
+void LoadTexture(const std::string &path, int index) {
+  int width4, height4, channels4;
+  unsigned char *image4 =
+      stbi_load(path.c_str(), &width4, &height4, &channels4, 0);
+  if (!image4) {
+    std::cout << "image4 empty\n";
   } else {
     // 將讀取進來的圖片檔案當作材質存進textures中
-    glBindTexture(GL_TEXTURE_2D, texture);
+    glGenTextures(1, &textures[index]);
+    glBindTexture(GL_TEXTURE_2D, textures[index]);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR_EXT,
-                 GL_UNSIGNED_BYTE, data);
+    GLenum format;
+    if (channels4 == 1)
+      format = GL_RED;
+    else if (channels4 == 3)
+      format = GL_RGB;
+    else if (channels4 == 4)
+      format = GL_RGBA;
+    else
+      format = 0; // 处理不支持的通道数
+
+    if (format) {
+      glTexImage2D(GL_TEXTURE_2D, 0, format, width4, height4, 0, format,
+                   GL_UNSIGNED_BYTE, image4);
+    } else {
+      std::cout << "Unsupported image format\n";
+    }
+
+    stbi_image_free(image4);
   }
 }
 
@@ -181,12 +196,10 @@ void SetupRC() {
   glGenTextures(
       4, textures); // 註冊一個大小為4的陣列讓openGL儲存材質，名稱為textures
 
-  // Load the texture objects
-
-  LoadTexture("../assets/floor.jpg", textures[0]);
-  LoadTexture("../assets/Block4.jpg", textures[1]);
-  LoadTexture("../assets/Block5.jpg", textures[2]);
-  LoadTexture("../assets/Block6.jpg", textures[3]);
+  LoadTexture(RESOURCE_DIR "//floor.jpg", 0);
+  LoadTexture(RESOURCE_DIR "/Block4.jpg", 1);
+  LoadTexture(RESOURCE_DIR "/Block5.jpg", 2);
+  LoadTexture(RESOURCE_DIR "/Block6.jpg", 3);
 
   // 下面要設定剩下的三種材質
   // ...
