@@ -1,0 +1,55 @@
+name: release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        platform: [linux, windows]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          lfs: true
+
+      - name: Pre-Download Setup
+        run: |
+          mkdir -p cg-course/build
+          mv obj cg-course
+
+      - name: Download Artifact
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: build.yml
+          workflow_conclusion: success
+          name: ${{ matrix.platform }}-binary
+          path: cg-course/build
+
+      - if: matrix.platform == 'linux'
+        run: |
+          chmod +x cg-course/build/cg-course
+          tar -cJvf cg-course-${{ github.ref_name }}-${{ matrix.platform }}.tar.xz cg-course
+
+      - if: matrix.platform == 'windows'
+        run: |
+          zip -r cg-course-${{ github.ref_name }}-${{ matrix.platform }}.zip cg-course
+
+      - if: matrix.platform == 'linux'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: cg-course-${{ github.ref_name }}-${{ matrix.platform }}.tar.xz
+          draft: true
+
+      - if: matrix.platform == 'windows'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: cg-course-${{ github.ref_name }}-${{ matrix.platform }}.zip
+          draft: true
