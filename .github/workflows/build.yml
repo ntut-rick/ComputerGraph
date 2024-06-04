@@ -1,10 +1,6 @@
 name: build
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - nuu
+on: [workflow_dispatch, push]
 
 jobs:
   build:
