@@ -1,0 +1,8 @@
+.cache
+.cmake
+
+*build*
+freeglut
+
+.vscode
+.idea
