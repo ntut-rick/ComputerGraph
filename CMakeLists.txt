@@ -10,9 +10,11 @@ set(THIRDPARTY ${CMAKE_SOURCE_DIR}/thirdparty)
 
 set(INCLUDE_FILES
     ${THIRDPARTY}/m3d/include/math3d.h
+    ${INCLUDE_DIR}/utils.h
 )
 set(SRC_FILES
     ${THIRDPARTY}/m3d/src/math3d.cpp
+    ${SRC_DIR}/utils.c
 )
 
 # you need pre-install OpenGL, GLU, please google
@@ -24,4 +26,5 @@ target_link_libraries(${PROJECT_NAME} freeglut_static)
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/thirdparty/freeglut/include/GL
     ${THIRDPARTY}/m3d/include
+    ${INCLUDE_DIR}
 )
