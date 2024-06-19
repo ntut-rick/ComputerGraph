@@ -1,27 +1,46 @@
 cmake_minimum_required(VERSION 3.16)
-project(ComputerGraph)
+project(cg-course)
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
 
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
 set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
-set(THIRDPARTY ${CMAKE_SOURCE_DIR}/thirdparty)
+
+add_subdirectory(thirdparty/freeglut)
+# add_subdirectory(thirdparty/GLTools)
+# find_package(OpenGL REQUIRED)
 
 # this two line don't work new.
-set(INCLUDE_FILES
-    ${THIRDPARTY}/stbImage/stb_image.h
-)
-set(SRC_FILES
-    ${THIRDPARTY}/gltools/src/GLBatch.cpp
-    ${THIRDPARTY}/gltools/src/glew.c
-    ${THIRDPARTY}/gltools/src/GLShaderManager.cpp
-    ${THIRDPARTY}/gltools/src/GLTools.cpp
-    ${THIRDPARTY}/gltools/src/GLTriangleBatch.cpp
-    ${THIRDPARTY}/gltools/src/math3d.cpp
-)
-add_subdirectory(thirdparty/freeglut)
+set(INCLUDE_FILE)
+set(SRC_FILES)
 
 # you need pre-install OpenGL, GLU, please google
-add_executable(${PROJECT_NAME} ${SRC_DIR}/shadow.cpp ${INCLUDE_FILES} ${SRC_FILES})
-target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} ${OPENGL_glu_LIBRARY})
+set(INCLUDE_FILES
+    ${INCLUDE_DIR}/main.hpp
+    ${INCLUDE_DIR}/obj.hpp
+    ${INCLUDE_DIR}/stb_image.h
+)
+set(SRC_FILES
+    ${SRC_DIR}/main.cpp
+    thirdparty/gltools/src/math3d.cpp
+)
+
+
+
+add_executable(${PROJECT_NAME}
+    ${INCLUDE_FILES}
+    ${SRC_FILES}
+)
+# Specify the directory containing GLTools headers
+include_directories(thirdparty/GLTools/include)
+include_directories(thirdparty/gltools/include)
+# Add the GLTools source files
+add_library(GLTools STATIC thirdparty/gltools/src/GLTools.cpp)
+# Link GLTools to your executable
+target_link_libraries(${PROJECT_NAME} GLTools)
+
+target_link_libraries(${PROJECT_NAME} ${OPENGL_gl_LIBRARY} ${OPENGL_glu_LIBRARY})
 target_link_libraries(${PROJECT_NAME} freeglut_static)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty/freeglut/include/GL ${THIRDPARTY}/stbImage ${THIRDPARTY}/gltools/include)
-target_compile_definitions(${PROJECT_NAME} PRIVATE RESOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/texture")
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty/freeglut/include/GL)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)

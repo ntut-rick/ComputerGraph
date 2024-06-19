@@ -2,9 +2,11 @@ name: build
 
 on:
   workflow_dispatch:
-  push:
+  pull_request:
     branches:
-      - nuu
+      - master
+      - mid
+      - hw*
 
 jobs:
   build:
@@ -16,19 +18,24 @@ jobs:
         compiler: [{ cc: gcc, cxx: g++ }, { cc: clang, cxx: clang++ }]
         build_type: [Release]
         binary: [linux-binary]
-        output: [build/ComputerGraph]
+        output: [build/cg-course]
         include:
           - os: windows-latest
             build_type: Release
             binary: windows-binary
-            output: build/Release/ComputerGraph.exe
+            output: build/cg-course.exe
 
     steps:
       - if: matrix.os == 'ubuntu-latest'
         name: Installing Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get -y install ${{ matrix.compiler.cc }} cmake ninja-build libglu1-mesa-dev mesa-common-dev xorg-dev
+          sudo apt-get -y install ${{ matrix.compiler.cc }} cmake ninja-build libglu1-mesa-dev mesa-common-dev xorg-dev libglew-dev
+      
+      - if: matrix.os == 'windows-latest'
+        name: Installing Dependencies
+        run: |
+          choco install glew
 
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -54,7 +61,10 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          cmake --build build --target ComputerGraph --config ${{ matrix.build_type }}
+          cmake --build build --target cg-course --config ${{ matrix.build_type }}
+          mv build/${{ matrix.build_type }}/cg-course.exe build/
+
+        
 
       - name: Uploading Binary
         uses: actions/upload-artifact@v3

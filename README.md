@@ -1,51 +1,64 @@
-# User Manual for Key Mappings
+# 110590049 final
 
-Space to reset everything
+## result
 
-## Rotation Controls:
-- 'q': Increase rotation around the x-axis
-- 'Q': Decrease rotation around the x-axis
-- 'a': Increase rotation around the y-axis
-- 'A': Decrease rotation around the y-axis
-- 'z': Increase rotation around the z-axis
-- 'Z': Decrease rotation around the z-axis
-- '1': Increase rotation of arbitrary vector
-- '!': Decrease rotation of arbitrary vector
+- load 3 different texture
+- load 3 different `.obj` file
+- animation
+- shadow
+- camera control
+- animation control
 
-## Translation Controls:
-- 'w': Move along the positive x-axis
-- 'W': Move along the negative x-axis
-- 's': Move along the positive y-axis
-- 'S': Move along the negative y-axis
-- 'x': Move along the positive z-axis
-- 'X': Move along the negative z-axis
 
-## Scaling Controls:
-- 'e': Increase scaling along the x-axis
-- 'E': Decrease scaling along the x-axis
-- 'd': Increase scaling along the y-axis
-- 'D': Decrease scaling along the y-axis
-- 'c': Increase scaling along the z-axis
-- 'C': Decrease scaling along the z-axis
+![](https://imgur.com/JDM4Mvn.png)
+![](https://imgur.com/2pWPjj2.png)
 
-## Camera Location Controls:
-- 'r': Move camera to the right
-- 'R': Move camera to the left
-- 'f': Move camera upwards
-- 'F': Move camera downwards
-- 'v': Move camera forwards
-- 'V': Move camera backwards
+## difficulty 
 
-## Camera Look-at Controls:
-- 't': Adjust camera look-at position to the right
-- 'T': Adjust camera look-at position to the left
-- 'g': Adjust camera look-at position upwards
-- 'G': Adjust camera look-at position downwards
-- 'b': Adjust camera look-at position forwards
-- 'B': Adjust camera look-at position backwards
+- Explore and read an OBJ file, including its UV mapping, normals, and other attributes.
+- Configure the GLTool program to ensure compatibility and seamless operation on both Linux and Windows platforms.
+- Discover an OBJ file with a "futuristic world" aesthetic that is user-friendly and easy to work with.
+- Aim to accomplish all the above objectives efficiently while maintaining a balanced and stress-free approach.
 
-## Arbitrary Vector Controls:
-- Click anywhere on screen
+## require
+* [cmake](https://github.com/Kitware/CMake/releases/download/v3.29.2/cmake-3.29.2-windows-x86_64.msi)
 
-## Pop-up Menu Controls:
-- Right click to view
+<!-- ###  ubuntu
+
+* install [wsl](https://apps.microsoft.com/detail/9pdxgncfsczv?ocid=pdpshare&hl=en-us&gl=US)
+
+```
+sudo apt install g++
+sudo apt install cmake
+
+``` -->
+
+
+## run
+**recommend use linux**
+### windows
+<!-- install `cmake tools` in your vscode -->
+```
+./build/cg-course.exe
+```
+
+
+### linux
+```bash
+cmake -B build
+cmake --build build
+./build/cg-course
+```
+## key action
+
+| Key Pressed | Action             |
+| ----------- | ------------------ |
+| 1           | switch to light 1  |
+| 2           | switch to light 2  |
+| 3           | switch to light 3  |
+| 4           | switch to light 4  |
+| space       | stop animation     |
+| arrow up    | camera turn up     |
+| arrow down  | camera turn down   |
+| arrow right | camera turn  right |
+| arrow left  | camera turn left   |
