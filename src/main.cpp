@@ -58,7 +58,7 @@ struct xy { T x, y; };
 int kUpdate_time = 10;
 struct { int w, h; } kWindow = { 800, 600 };
 
-float kGirlsAngle = 0;
+float kMoonAngle = 0;
 
 bool kIsStop = false;
 
@@ -83,6 +83,7 @@ struct NiubeObjPlusX {
 
 NiubeObjPlusX sphere;
 NiubeObjPlusX moon;
+NiubeObjPlusX moon2;
 NiubeObjPlusX sun;
 
 M3DMatrix44f shadowMat;
@@ -200,18 +201,29 @@ void SetupRC() {
   glEnable(GL_NORMALIZE);
 }
 
+// here is how whole solar system work
 void drawObjAndItsShadow(bool drawShadow) {
   const float scale = 0.2;
-  glScaled(scale, scale, scale);
-  glTranslatef(0.0f, -5.0f * scale, 2.0f);
-  glRotatef(kGirlsAngle, 0, 1, 0);
 
+  glScaled(scale, scale, scale);
+  glTranslatef(0.0f, 0, 2.0f);
+  glRotatef(kMoonAngle, 0, 1, 0);
+
+  glPushMatrix();
+
+  glTranslatef(0.0f, -5.0f * scale, 0);
   drawPlusX(sun, drawShadow);
 
-  glTranslatef(0.0f, cos(kGirlsAngle / 30.0), 1.5f);
-  glRotatef(kGirlsAngle, 0, 1, 0);
-
+  glPopMatrix();
+  glPushMatrix();
+  glRotatef(kMoonAngle, 0, 1, 0);
+  glTranslatef(0, cos(kMoonAngle / 30.0)*2, 1.5f);
   drawPlusX(moon, drawShadow);
+
+  glPopMatrix();
+  glRotatef(kMoonAngle, 0, 1, 0);
+  glTranslatef(0, sin(kMoonAngle / 30.0)*2, -1.5f);
+  drawPlusX(moon2, drawShadow);
 }
 
 /* START GLUT CALLBACK FUNCTIONS */
@@ -279,7 +291,7 @@ void MouseMotionHandler(int mx, int my) {
 }
 void Timer(int value) {
   if (!kIsStop) {
-    kGirlsAngle += 3;
+    kMoonAngle += 3;
   }
 
   glutPostRedisplay();
@@ -297,8 +309,10 @@ void MouseHandler(int button, int state, int x, int y) {
 }
 void NormalKeyHandler(unsigned char key, int x, int y) {
   switch (key) {
-    case 'q': kLightData.rot.x += kLightData.rotDelta.x; break;
-    case 'a': kLightData.rot.x -= kLightData.rotDelta.x; break;
+    case 'w': kLightData.rot.x += kLightData.rotDelta.x; break;
+    case 's': kLightData.rot.x -= kLightData.rotDelta.x; break;
+    case 'a': kMoonAngle += 5; break;
+    case 'd': kMoonAngle -= 5; break;
     case ' ': kIsStop = !kIsStop; break;
   }
   if ( kLightData.rot.x > PI/2) { kLightData.rot.x = PI/2; }
@@ -316,8 +330,9 @@ int main(int argc, char *argv[]) {
   glutInitWindowSize(kWindow.w, kWindow.h);
   glutCreateWindow("Niu-be de CG final work");
   sphere = NiubeObjPlusX("../obj/sphere.obj", "../texture/theworldif.jpg");
-  sun = NiubeObjPlusX("../obj/monster.obj", "../texture/monster.jpg");
+  sun = NiubeObjPlusX("../obj/trump.obj", "../texture/tumpLPcolors.png");
   moon = NiubeObjPlusX("../obj/sphere.obj", "../texture/kjy01601.png");
+  moon2 = NiubeObjPlusX("../obj/sphere.obj", "../texture/wkc.bmp");
   // Front Face (before rotation)
   glutReshapeFunc(ChangeSize);
   glutMouseFunc(MouseHandler);
