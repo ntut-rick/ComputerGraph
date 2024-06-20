@@ -1,18 +1,26 @@
 #include "main.hpp"
 
+#define PI 3.1415926535f
+
+// Define a macro to print a 4x4 array
+#define PRINT_4X4_ARRAY(arr) \
+    do { \
+        for (int i = 0; i < 16; ++i) { \
+            std::cout << arr[i] << "\t"; \
+            if ((i + 1) % 4 == 0) \
+                std::cout << std::endl; \
+        } \
+    } while (0)
+
 int update_time = 10;
 int lightId = 0;
-int windowx = 1920 / 2;
-int windowy = 1080 - 40;
+struct { int w, h; } kWindow = { 800, 600 };
 
-float mousex = 0;
-float mousey = 0;
 float r = 0;
 
 bool stop = false;
 
-GLfloat xRot = 0.0f;
-GLfloat yRot = 1.57f;
+struct { GLfloat x,y,z; } kRot = { 0, PI/2, 0 };
 
 GLfloat ambientLight[] = {0.3f, 0.3f, 0.3f, 1.0f};
 GLfloat diffuseLight[] = {0.7f, 0.7f, 0.7f, 1.0f};
@@ -32,6 +40,18 @@ Obj master;
 
 M3DMatrix44f shadowMat;
 
+static struct {int x,y;} kMP;
+void MouseMotionHandler(int mx, int my) {
+  kRot.y += 0.025 * (mx - kMP.x);
+  kRot.x += -0.025 * (my - kMP.y);
+  printf("%f\n", kRot.x);
+  if (kRot.x > PI/2) { kRot.x = PI/2; }
+  if (kRot.x < -PI/2) { kRot.x = -PI/2; }
+  kMP.x = mx;
+  kMP.y = my;
+  glutPostRedisplay();
+}
+
 void Timer(int value)
 {
   // RenderScene();
@@ -41,22 +61,33 @@ void Timer(int value)
     r += 2;
   glutTimerFunc(update_time, Timer, 0); // next Timer call milliseconds later
 }
+float kScroll = 0;
 void MouseHandler(int button, int state, int x, int y)
 {
-
-  if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
-  {
-    mousex = ((float)x / (float)windowx) * 2 - 1;
-    mousey = -2 * ((float)y / (float)windowy) + 1;
-  }
-  if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN)
-  {
-    mousex = ((float)x / (float)windowx) * 2 - 1;
-    mousey = -2 * ((float)y / (float)windowy) + 1;
-  }
-  printf("mouse x=%.2f,y=%.2f\n", mousex, mousey);
-  // xRot = mousex * 3.14;
-  // yRot = mousey * 3.14;
+  kMP.x = x;
+  kMP.y = y;
+  #define GLUT_SCROLL_UP 4
+  #define GLUT_SCROLL_DOWN 3
+  const float delta = 2;
+  if ( button == GLUT_SCROLL_DOWN) { kScroll -= delta; }
+  if ( button == GLUT_SCROLL_UP) { kScroll += delta; }
+  float uwu = cos(kScroll / 30.0);
+  float ywy = sin(kScroll / 30.0);
+  lightPos[lightId][0] = uwu*100;
+  lightPos[lightId][2] = ywy*100;
+  // if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+  // {
+  //   mousex = ((float)x / (float)kWindow.w) * 2 - 1;
+  //   mousey = -2 * ((float)y / (float)kWindow.h) + 1;
+  // }
+  // if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN)
+  // {
+  //   mousex = ((float)x / (float)kWindow.w) * 2 - 1;
+  //   mousey = -2 * ((float)y / (float)kWindow.h) + 1;
+  // }
+  // printf("mouse x=%.2f,y=%.2f\n", mousex, mousey);
+  // kRot.x = mousex * 3.14;
+  // kRot.y = mousey * 3.14;
 }
 void renderObj(Obj &obj)
 {
@@ -150,9 +181,9 @@ void DrawJet(int nShadow)
 void SetupRC()
 {
 
-  GLfloat fAspect = (GLfloat)windowx / (GLfloat)windowy;
+  GLfloat fAspect = (GLfloat)kWindow.w / (GLfloat)kWindow.h;
 
-  glViewport(0, 0, windowx, windowy);
+  glViewport(0, 0, kWindow.w, kWindow.h);
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
@@ -161,7 +192,7 @@ void SetupRC()
 
   float length = 100.0f;
   gluLookAt(0.0f, 0.0f, 0.0f,
-            length * cos(yRot), length * sin(xRot), length * sin(yRot),
+            length * cos(kRot.y), length * sin(kRot.x), length * sin(kRot.y),
             0.0f, 1.0f, 0.0f);
 
   glLightfv(GL_LIGHT0, GL_POSITION, lightPos[lightId]);
@@ -272,16 +303,16 @@ void RenderScene(void)
 void SpecialKeys(int key, int x, int y)
 {
   if (key == GLUT_KEY_UP)
-    xRot += 0.05f;
+    kRot.x += 0.05f;
 
   if (key == GLUT_KEY_DOWN)
-    xRot -= 0.05f;
+    kRot.x -= 0.05f;
 
   if (key == GLUT_KEY_LEFT)
-    yRot -= 0.05f;
+    kRot.y -= 0.05f;
 
   if (key == GLUT_KEY_RIGHT)
-    yRot += 0.05f;
+    kRot.y += 0.05f;
 
   glutPostRedisplay();
 }
@@ -304,15 +335,15 @@ void NormalKeyHandler(unsigned char key, int x, int y)
 }
 void ChangeSize(int w, int h)
 {
-  windowx = w;
-  windowy = h;
+  kWindow.w = w;
+  kWindow.h = h;
 }
 
 int main(int argc, char *argv[])
 {
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-  glutInitWindowSize(windowx, windowy);
+  glutInitWindowSize(kWindow.w, kWindow.h);
   glutCreateWindow("110590049 final");
   sphere = readObj("../obj/sphere.obj");
   girl = readObj("../obj/girl.obj");
@@ -323,6 +354,7 @@ int main(int argc, char *argv[])
   // Front Face (before rotation)
   glutReshapeFunc(ChangeSize);
   glutMouseFunc(MouseHandler);
+  glutMotionFunc(MouseMotionHandler);
   glutSpecialFunc(SpecialKeys);
   glutKeyboardFunc(NormalKeyHandler);
   glutDisplayFunc(RenderScene);
