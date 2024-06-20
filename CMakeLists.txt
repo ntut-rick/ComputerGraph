@@ -13,7 +13,6 @@ find_package(OpenGL REQUIRED)
 
 # you need pre-install OpenGL, GLU, please google
 set(INCLUDE_FILES
-    ${INCLUDE_DIR}/main.hpp
     ${INCLUDE_DIR}/obj.hpp
     ${INCLUDE_DIR}/stb_image.h
 )

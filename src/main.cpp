@@ -1,4 +1,14 @@
-#include "main.hpp"
+#include <math.h>
+#include <stdio.h>
+
+#include <GLTools.h>// OpenGL toolkit
+#include <freeglut_std.h>
+#include <math3d.h>
+
+#include "obj.hpp"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 #define PI 3.1415926535f
 
@@ -12,27 +22,56 @@
         } \
     } while (0)
 
-int update_time = 10;
-int lightId = 0;
+#define GLUT_SCROLL_UP 4
+#define GLUT_SCROLL_DOWN 3
+
+
+static void load_image(GLuint *textures, const char *path) {
+  int width, height, channels;
+  unsigned char *imageData = stbi_load(path, &width, &height, &channels, 0);
+
+  glGenTextures(1, textures);
+  glBindTexture(GL_TEXTURE_2D, *textures);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  if (imageData) {
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+                 width, height,
+                 0, GL_RGB, GL_UNSIGNED_BYTE, imageData);
+    stbi_image_free(imageData);
+    printf("%s success\n", path);
+  } else {
+    printf("%s fail\n", path);
+  }
+
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, *textures);
+}
+
+int kUpdate_time = 10;
+int kLightId = 0;
 struct { int w, h; } kWindow = { 800, 600 };
 
-float r = 0;
+float kGirlsAngle = 0;
 
-bool stop = false;
+bool kIsStop = false;
 
-struct { GLfloat x,y,z; } kRot = { 0, PI/2, 0 };
 
-GLfloat ambientLight[] = {0.3f, 0.3f, 0.3f, 1.0f};
-GLfloat diffuseLight[] = {0.7f, 0.7f, 0.7f, 1.0f};
-GLfloat specular[] = {1.0f, 1.0f, 1.0f, 1.0f};
-GLfloat lightPos[4][4] = {
-    {-75.0f, 50.0f, 50.0f, 0.0f},
-    {-75.0f, 100.0f, 50.0f, 0.0f},
-    {-75.0f, 150.0f, 50.0f, 0.0f},
-    {-75.0f, 200.0f, 50.0f, 0.0f},
-};
-GLfloat specref[] = {1.0f, 1.0f, 1.0f, 1.0f};
-GLuint textures[4];
+struct {
+  GLfloat x, y, z;
+} kRot = {0, PI / 2, 0};
+struct {
+  GLfloat x, y;
+} kLightRot = {PI / 4, PI / 2};
+
+GLfloat kAmbientLight[] = {0.3f, 0.3f, 0.3f, 1.0f};
+GLfloat kDiffuseLight[] = {0.7f, 0.7f, 0.7f, 1.0f};
+GLfloat kSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f};
+GLfloat kLightPos[4] =  {-75.0f, 200.0f, 50.0f, 0.0f};
+GLfloat kSpecref[] = {1.0f, 1.0f, 1.0f, 1.0f};
+GLuint kTextures[4];
 
 Obj sphere;
 Obj girl;
@@ -41,61 +80,14 @@ Obj master;
 M3DMatrix44f shadowMat;
 
 static struct {int x,y;} kMP;
-void MouseMotionHandler(int mx, int my) {
-  kRot.y += 0.025 * (mx - kMP.x);
-  kRot.x += -0.025 * (my - kMP.y);
-  printf("%f\n", kRot.x);
-  if (kRot.x > PI/2) { kRot.x = PI/2; }
-  if (kRot.x < -PI/2) { kRot.x = -PI/2; }
-  kMP.x = mx;
-  kMP.y = my;
-  glutPostRedisplay();
-}
+const float kLightRotDelta = 0.2f;
+const float kLightRotRadius = 100;
 
-void Timer(int value)
-{
-  // RenderScene();
-  glutPostRedisplay(); // Post re-paint request to activate display()
 
-  if (!stop)
-    r += 2;
-  glutTimerFunc(update_time, Timer, 0); // next Timer call milliseconds later
-}
-float kScroll = 0;
-void MouseHandler(int button, int state, int x, int y)
-{
-  kMP.x = x;
-  kMP.y = y;
-  #define GLUT_SCROLL_UP 4
-  #define GLUT_SCROLL_DOWN 3
-  const float delta = 2;
-  if ( button == GLUT_SCROLL_DOWN) { kScroll -= delta; }
-  if ( button == GLUT_SCROLL_UP) { kScroll += delta; }
-  float uwu = cos(kScroll / 30.0);
-  float ywy = sin(kScroll / 30.0);
-  lightPos[lightId][0] = uwu*100;
-  lightPos[lightId][2] = ywy*100;
-  // if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
-  // {
-  //   mousex = ((float)x / (float)kWindow.w) * 2 - 1;
-  //   mousey = -2 * ((float)y / (float)kWindow.h) + 1;
-  // }
-  // if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN)
-  // {
-  //   mousex = ((float)x / (float)kWindow.w) * 2 - 1;
-  //   mousey = -2 * ((float)y / (float)kWindow.h) + 1;
-  // }
-  // printf("mouse x=%.2f,y=%.2f\n", mousex, mousey);
-  // kRot.x = mousex * 3.14;
-  // kRot.y = mousey * 3.14;
-}
-void renderObj(Obj &obj)
-{
+void renderObj(Obj &obj) {
   M3DVector3f vNormal;
   glBegin(GL_TRIANGLES);
-  for (auto i = 0; i < obj.faces.size(); i++)
-  {
-
+  for (auto i = 0; i < obj.faces.size(); i++) {
     FaceIndices face = obj.faces[i];
     float v1[3] = {obj.vertices[face.v[0]].x, obj.vertices[face.v[0]].y, obj.vertices[face.v[0]].z};
     float v2[3] = {obj.vertices[face.v[1]].x, obj.vertices[face.v[1]].y, obj.vertices[face.v[1]].z};
@@ -121,65 +113,50 @@ void renderObj(Obj &obj)
 
 ////////////////////////////////////////////////
 // This function just specifically draws the jet
-void DrawJet(int nShadow)
-{
+void DrawJet(int nShadow) {
   M3DVector3f vNormal; // Storeage for calculated surface normal
 
-  float scale = 0.2;
-  GLfloat white[4] = {1, 1, 1, 1.0};
-  GLfloat shadowColor[4] = {10.0 / 255.0, 10.0 / 255.0, 40.0 / 255.0, 0.5};
+  const float scale = 0.2;
+  const GLfloat white[4] = {1, 1, 1, 1.0};
+  const GLfloat shadowColor[4] = {10.0 / 255.0, 10.0 / 255.0, 40.0 / 255.0, 0.5};
   // printf("r=%.2f\n", r);
 
   // glTranslatef(0.0f, 10.0f, 0.0f);
-  glPushMatrix();
-  {
 
-    // glPushMatrix();
-    glScaled(scale, scale, scale);
-    glTranslatef(0.0f, -5.0 * scale, 2.0f);
-    glRotatef(r, 0, 1, 0);
-    if (nShadow == 0)
-    {
-      glEnable(GL_TEXTURE_2D);
-      glBindTexture(GL_TEXTURE_2D, textures[2]);
-      glColor3fv(white);
-    }
-    else
-    {
-      glDisable(GL_TEXTURE_2D);
-      glColor3fv(shadowColor);
-    }
-    renderObj(master);
-
-    glPushMatrix();
-    {
-      // glScaled(scale, scale, scale);
-      glTranslatef(0.0f, cos(r / 30.0), 1.5f);
-      glRotatef(r, 0, 1, 0);
-
-      if (nShadow == 0)
-      {
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, textures[1]);
-        glColor3fv(white);
-      }
-      else
-      {
-        glDisable(GL_TEXTURE_2D);
-        glColor3fv(shadowColor);
-      }
-
-      renderObj(girl);
-    }
-    glPopMatrix();
+  glScaled(scale, scale, scale);
+  glTranslatef(0.0f, -5.0 * scale, 2.0f);
+  glRotatef(kGirlsAngle, 0, 1, 0);
+  if (nShadow == 0) {
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, kTextures[2]);
+    glColor3fv(white);
+  } else {
+    glDisable(GL_TEXTURE_2D);
+    glColor3fv(shadowColor);
   }
-  glPopMatrix();
+  renderObj(master);
+
+  // glScaled(scale, scale, scale);
+  glTranslatef(0.0f, cos(kGirlsAngle / 30.0), 1.5f);
+  glRotatef(kGirlsAngle, 0, 1, 0);
+
+  if (nShadow == 0) {
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, kTextures[1]);
+    glColor3fv(white);
+  } else {
+    glDisable(GL_TEXTURE_2D);
+    glColor3fv(shadowColor);
+  }
+  renderObj(girl);
 }
 
 // This function does any needed initialization on the rendering
 // context.
-void SetupRC()
-{
+void SetupRC() {
+  kLightPos[0] = cos(kLightRot.y) * kLightRotRadius * cos(kLightRot.x);
+  kLightPos[1] = sin(kLightRot.x) * kLightRotRadius;
+  kLightPos[2] = sin(kLightRot.y) * kLightRotRadius * cos(kLightRot.x);
 
   GLfloat fAspect = (GLfloat)kWindow.w / (GLfloat)kWindow.h;
 
@@ -195,7 +172,7 @@ void SetupRC()
             length * cos(kRot.y), length * sin(kRot.x), length * sin(kRot.y),
             0.0f, 1.0f, 0.0f);
 
-  glLightfv(GL_LIGHT0, GL_POSITION, lightPos[lightId]);
+  glLightfv(GL_LIGHT0, GL_POSITION, kLightPos);
 
   // Any three points on the ground (counter clockwise order)
   M3DVector3f points[3] = {{-30.0f, -1.0f, -20.0f},
@@ -207,10 +184,10 @@ void SetupRC()
   glEnable(GL_CULL_FACE); // Do not calculate inside of jet
 
   // Setup and enable light 0
-  glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight);
-  glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight);
-  glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
-  glLightfv(GL_LIGHT0, GL_POSITION, lightPos[lightId]);
+  glLightfv(GL_LIGHT0, GL_AMBIENT, kAmbientLight);
+  glLightfv(GL_LIGHT0, GL_DIFFUSE, kDiffuseLight);
+  glLightfv(GL_LIGHT0, GL_SPECULAR, kSpecular);
+  glLightfv(GL_LIGHT0, GL_POSITION, kLightPos);
   glEnable(GL_LIGHT0);
 
   // Enable color tracking
@@ -221,7 +198,7 @@ void SetupRC()
 
   // All materials hereafter have full specular reflectivity
   // with a high shine
-  glMaterialfv(GL_FRONT, GL_SPECULAR, specref);
+  glMaterialfv(GL_FRONT, GL_SPECULAR, kSpecref);
   glMateriali(GL_FRONT, GL_SHININESS, 128);
 
   // Light blue background
@@ -232,13 +209,14 @@ void SetupRC()
   m3dGetPlaneEquation(vPlaneEquation, points[0], points[1], points[2]);
 
   // Calculate projection matrix to draw shadow on the ground
-  m3dMakePlanarShadowMatrix(shadowMat, vPlaneEquation, lightPos[lightId]);
+  m3dMakePlanarShadowMatrix(shadowMat, vPlaneEquation, kLightPos);
 
   glEnable(GL_NORMALIZE);
 }
-// Called to draw scene
-void RenderScene(void)
-{
+
+/* START GLUT CALLBACK FUNCTIONS */
+
+void RenderScene(void) {
   SetupRC();
   // Clear the window with current clearing color
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -252,24 +230,26 @@ void RenderScene(void)
   // glEnable(GL_BLEND);
 
   glEnable(GL_LIGHTING);
-  glLightfv(GL_LIGHT0, GL_POSITION, lightPos[lightId]);
+  glLightfv(GL_LIGHT0, GL_POSITION, kLightPos);
 
   glPushMatrix();
+  glMatrixMode(GL_MODELVIEW);
   {
-
     // sphere
-    float scale = 200;
+    const float scale = 200;
     glPushMatrix();
     {
+      glLoadIdentity();
       glColor3f(1, 1, 1);
       glScaled(scale, scale, scale);
-      glBindTexture(GL_TEXTURE_2D, textures[0]);
+      glBindTexture(GL_TEXTURE_2D, kTextures[0]);
       renderObj(sphere);
     }
     glPopMatrix();
 
     glPushMatrix();
     {
+      glLoadIdentity();
       DrawJet(0);
     }
     glPopMatrix();
@@ -281,6 +261,7 @@ void RenderScene(void)
 
     glPushMatrix();
     {
+      glLoadIdentity();
       glMultMatrixf((GLfloat *)shadowMat);
       DrawJet(1);
     }
@@ -289,7 +270,8 @@ void RenderScene(void)
     // Draw the light source
     glPushMatrix();
     {
-      glTranslatef(lightPos[lightId][0], lightPos[lightId][1], lightPos[lightId][2]);
+      glLoadIdentity();
+      glTranslatef(kLightPos[0], kLightPos[1], kLightPos[2]);
       glColor3f(1, 0, 1);
       glutSolidSphere(10.0f, 10, 10);
     }
@@ -300,62 +282,64 @@ void RenderScene(void)
   glutSwapBuffers();
 }
 
-void SpecialKeys(int key, int x, int y)
-{
-  if (key == GLUT_KEY_UP)
-    kRot.x += 0.05f;
+void MouseMotionHandler(int mx, int my) {
+  kRot.y += 0.025 * (mx - kMP.x);
+  kRot.x += -0.025 * (my - kMP.y);
+  if (kRot.x > PI/2) { kRot.x = PI/2; }
+  if (kRot.x < -PI/2) { kRot.x = -PI/2; }
+  // update last mouse position
+  kMP.x = mx;
+  kMP.y = my;
+  glutPostRedisplay();
+}
+void Timer(int value) {
+  if (!kIsStop) {
+    kGirlsAngle += 3;
+  }
 
-  if (key == GLUT_KEY_DOWN)
-    kRot.x -= 0.05f;
+  glutPostRedisplay();
+  glutTimerFunc(kUpdate_time, Timer, 0);
+}
+void MouseHandler(int button, int state, int x, int y) {
+  if (button == GLUT_SCROLL_DOWN) { kLightRot.y -= kLightRotDelta; }
+  if (button == GLUT_SCROLL_UP) { kLightRot.y += kLightRotDelta; }
 
-  if (key == GLUT_KEY_LEFT)
-    kRot.y -= 0.05f;
-
-  if (key == GLUT_KEY_RIGHT)
-    kRot.y += 0.05f;
+  // renew the last position
+  kMP.x = x;
+  kMP.y = y;
 
   glutPostRedisplay();
 }
-void NormalKeyHandler(unsigned char key, int x, int y)
-{
-  if (key == '1')
-    lightId = 0;
-  if (key == '2')
-    lightId = 1;
-  if (key == '3')
-    lightId = 2;
-  if (key == '4')
-    lightId = 3;
-  if (key == ' ')
-    stop = !stop;
-
-  printf("lightId: %d\n", lightId);
+void NormalKeyHandler(unsigned char key, int x, int y) {
+  switch (key) {
+    case 'q': kLightRot.x += kLightRotDelta; break;
+    case 'z': kLightRot.x -= kLightRotDelta; break;
+    case ' ': kIsStop = !kIsStop; break;
+  }
+  if ( kLightRot.x > PI/2) { kLightRot.x = PI/2; }
+  if ( kLightRot.x < 0) { kLightRot.x = 0; }
 
   glutPostRedisplay();
 }
-void ChangeSize(int w, int h)
-{
-  kWindow.w = w;
-  kWindow.h = h;
+void ChangeSize(int w, int h) {
+  kWindow = {w, h};
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutInitWindowSize(kWindow.w, kWindow.h);
-  glutCreateWindow("110590049 final");
+  glutCreateWindow("Niu-be de CG final work");
   sphere = readObj("../obj/sphere.obj");
-  girl = readObj("../obj/girl.obj");
+  girl = readObj("../obj/sphere.obj");
   master = readObj("../obj/monster.obj");
-  load_image(&textures[0], "../texture/balcony.png");
-  load_image(&textures[1], "../texture/girl.jpeg");
-  load_image(&textures[2], "../texture/monster.jpg");
+  load_image(&kTextures[0], "../texture/theworldif.jpg");
+  load_image(&kTextures[1], "../texture/kjy01601.png");
+  load_image(&kTextures[2], "../texture/monster.jpg");
   // Front Face (before rotation)
   glutReshapeFunc(ChangeSize);
   glutMouseFunc(MouseHandler);
   glutMotionFunc(MouseMotionHandler);
-  glutSpecialFunc(SpecialKeys);
   glutKeyboardFunc(NormalKeyHandler);
   glutDisplayFunc(RenderScene);
 
