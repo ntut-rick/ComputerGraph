@@ -1,6 +1,6 @@
 # Niu-Bi de CG Final Work
 
-This project demonstrates basic OpenGL rendering the future world if the Niu-Be God Zenyatta exist.
+This project demonstrates basic OpenGL rendering [the future world if](https://knowyourmeme.com/memes/the-world-if) the Niu-Be God Zenyatta exist.
 
 ![preview image](./preview.webp)
 
