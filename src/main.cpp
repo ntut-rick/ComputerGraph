@@ -273,8 +273,8 @@ void RenderScene(void) {
     // Draw the light source
     glLoadIdentity();
     glTranslatef(kLightPos[0], kLightPos[1], kLightPos[2]);
-    glColor3f(1, 0, 1);
-    glutSolidSphere(10.0f, 10, 10);
+    glColor3f(0, 1, 0);
+    glutSolidSphere(5.0f, 10, 10);
   }
   glPopMatrix();
 
