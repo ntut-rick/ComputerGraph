@@ -2,7 +2,7 @@
 
 This project demonstrates basic OpenGL rendering the future world if the Niu-Be God Zenyatta exist.
 
-
+![preview image](./preview.webp)
 
 ## Installation
 
