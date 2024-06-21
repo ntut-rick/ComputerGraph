@@ -216,13 +216,15 @@ void drawObjAndItsShadow(bool drawShadow) {
 
   glPopMatrix();
   glPushMatrix();
+  glScaled(scale, scale, scale);
   glRotatef(kMoonAngle, 0, 1, 0);
-  glTranslatef(0, cos(kMoonAngle / 30.0)*2, 1.5f);
+  glTranslatef(0, cos(kMoonAngle / 30.0)*2, 3.f);
   drawPlusX(moon, drawShadow);
 
   glPopMatrix();
+  glScaled(scale, scale, scale);
   glRotatef(kMoonAngle, 0, 1, 0);
-  glTranslatef(0, sin(kMoonAngle / 30.0)*2, -1.5f);
+  glTranslatef(0, sin(kMoonAngle / 30.0)*2, -3.f);
   drawPlusX(moon2, drawShadow);
 }
 
