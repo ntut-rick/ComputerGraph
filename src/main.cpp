@@ -1,7 +1,6 @@
 #include "main.hpp"
 
 int update_time = 10;
-int lightId = 0;
 int windowx = 1920 / 2;
 int windowy = 1080 - 40;
 
@@ -11,6 +10,7 @@ float ry = 0;
 float rz = 0;
 float ty = 0;
 
+bool boarding = false;
 bool fly = false;
 bool takeoff = false;
 
@@ -20,25 +20,29 @@ GLfloat yRot = 1.57f;
 GLfloat ambientLight[] = {0.3f, 0.3f, 0.3f, 1.0f};
 GLfloat diffuseLight[] = {0.7f, 0.7f, 0.7f, 1.0f};
 GLfloat specular[] = {1.0f, 1.0f, 1.0f, 1.0f};
-GLfloat lightPos[4][4] = {
-    {-75.0f, 50.0f, 50.0f, 0.0f},
-    {-75.0f, 100.0f, 50.0f, 0.0f},
-    {-75.0f, 150.0f, 50.0f, 0.0f},
-    {-75.0f, 200.0f, 50.0f, 0.0f},
-};
+GLfloat lightPos[4] = {-75.0f, 100.0f, 50.0f, 0.0f};
 GLfloat specref[] = {1.0f, 1.0f, 1.0f, 1.0f};
 
 Obj sphere;
 Obj torus;
 Obj ufo;
+Obj fish;
+
+float fishy = -0.5;
 
 M3DMatrix44f shadowMat;
 
-void Timer(int value) {
-  // RenderScene();
+void DelayTakeoff(int value) {
   glutPostRedisplay(); // Post re-paint request to activate display()
   takeoff = true;
 }
+
+void DelayFly(int value) {
+  glutPostRedisplay(); // Post re-paint request to activate display()
+  fly = true;
+  glutTimerFunc(2000, DelayTakeoff, 0);
+}
+
 void MouseHandler(int button, int state, int x, int y) {
 
   if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
@@ -143,6 +147,28 @@ void DrawJet(int nShadow) {
     glPopMatrix();
   }
   glPopMatrix();
+
+  if (!fly) {
+    glPushMatrix();
+    {
+      if (boarding && fishy <= 1.0f) {
+        fishy += 0.05f;
+      }
+      glTranslatef(1.0f, fishy, 2.0f);
+
+      if (nShadow == 0) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, fish.textureId);
+        glColor4fv(white);
+      } else {
+        glDisable(GL_TEXTURE_2D);
+        glColor4fv(shadowColor);
+      }
+
+      renderObj(fish);
+    }
+    glPopMatrix();
+  }
 }
 
 // This function does any needed initialization on the rendering
@@ -162,7 +188,7 @@ void SetupRC() {
   gluLookAt(0.0f, 0.0f, 0.0f, length * cos(yRot), length * sin(xRot),
             length * sin(yRot), 0.0f, 1.0f, 0.0f);
 
-  glLightfv(GL_LIGHT0, GL_POSITION, lightPos[lightId]);
+  glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
 
   // Any three points on the ground (counter clockwise order)
   M3DVector3f points[3] = {
@@ -176,7 +202,7 @@ void SetupRC() {
   glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight);
   glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight);
   glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
-  glLightfv(GL_LIGHT0, GL_POSITION, lightPos[lightId]);
+  glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
   glEnable(GL_LIGHT0);
 
   // Enable color tracking
@@ -198,7 +224,7 @@ void SetupRC() {
   m3dGetPlaneEquation(vPlaneEquation, points[0], points[1], points[2]);
 
   // Calculate projection matrix to draw shadow on the ground
-  m3dMakePlanarShadowMatrix(shadowMat, vPlaneEquation, lightPos[lightId]);
+  m3dMakePlanarShadowMatrix(shadowMat, vPlaneEquation, lightPos);
 
   glEnable(GL_NORMALIZE);
 }
@@ -217,7 +243,7 @@ void RenderScene(void) {
   // glEnable(GL_BLEND);
 
   glEnable(GL_LIGHTING);
-  glLightfv(GL_LIGHT0, GL_POSITION, lightPos[lightId]);
+  glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
 
   glPushMatrix();
   {
@@ -227,6 +253,7 @@ void RenderScene(void) {
     glPushMatrix();
     {
       glColor4f(1, 1, 1, 1);
+      glRotatef(-90, 0, 1, 0);
       glScaled(scale, scale, scale);
       glBindTexture(GL_TEXTURE_2D, sphere.textureId);
       renderObj(sphere);
@@ -252,8 +279,7 @@ void RenderScene(void) {
     // Draw the light source
     glPushMatrix();
     {
-      glTranslatef(lightPos[lightId][0], lightPos[lightId][1],
-                   lightPos[lightId][2]);
+      glTranslatef(lightPos[0], lightPos[1], lightPos[2]);
       glColor4f(1, 0, 1, 0.5);
       glutSolidSphere(10.0f, 10, 10);
     }
@@ -281,20 +307,10 @@ void SpecialKeys(int key, int x, int y) {
   glutPostRedisplay();
 }
 void NormalKeyHandler(unsigned char key, int x, int y) {
-  if (key == '1')
-    lightId = 0;
-  if (key == '2')
-    lightId = 1;
-  if (key == '3')
-    lightId = 2;
-  if (key == '4')
-    lightId = 3;
   if (key == ' ') {
-    fly = true;
-    glutTimerFunc(2000, Timer, 0);
+    boarding = true;
+    glutTimerFunc(2000, DelayFly, 0);
   }
-
-  printf("lightId: %d\n", lightId);
 
   glutPostRedisplay();
 }
@@ -314,6 +330,8 @@ int main(int argc, char *argv[]) {
   load_image(&torus.textureId, "../texture/cliu.jpg");
   ufo = readObj("../obj/ufo.obj");
   load_image(&ufo.textureId, "../texture/ufo.jpg");
+  fish = readObj("../obj/fish.obj");
+  load_image(&fish.textureId, "../texture/fish.jpg");
   // Front Face (before rotation)
   glutReshapeFunc(ChangeSize);
   glutMouseFunc(MouseHandler);

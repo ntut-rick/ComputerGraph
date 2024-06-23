@@ -1,64 +1,36 @@
-# 110590049 final
+# 110590003 CG Final Project
 
-## result
+## Showcase
 
-- load 3 different texture
-- load 3 different `.obj` file
-- animation
-- shadow
-- camera control
-- animation control
+- `.obj` files
+- Textures
+- Object rotations
+- Shadows
+- Animations
 
+![demo.mp4](demo.mp4)
 
-![](https://imgur.com/JDM4Mvn.png)
-![](https://imgur.com/2pWPjj2.png)
+## Build Steps
 
-## difficulty 
+Install cmake
 
-- Explore and read an OBJ file, including its UV mapping, normals, and other attributes.
-- Configure the GLTool program to ensure compatibility and seamless operation on both Linux and Windows platforms.
-- Discover an OBJ file with a "futuristic world" aesthetic that is user-friendly and easy to work with.
-- Aim to accomplish all the above objectives efficiently while maintaining a balanced and stress-free approach.
+Run the following commands
 
-## require
-* [cmake](https://github.com/Kitware/CMake/releases/download/v3.29.2/cmake-3.29.2-windows-x86_64.msi)
-
-<!-- ###  ubuntu
-
-* install [wsl](https://apps.microsoft.com/detail/9pdxgncfsczv?ocid=pdpshare&hl=en-us&gl=US)
-
-```
-sudo apt install g++
-sudo apt install cmake
-
-``` -->
-
-
-## run
-**recommend use linux**
-### windows
-<!-- install `cmake tools` in your vscode -->
-```
-./build/cg-course.exe
-```
-
-
-### linux
 ```bash
 cmake -B build
 cmake --build build
-./build/cg-course
+cd build
+./cg-course
 ```
+
+> In Visual Studio you might need to `./Debug/cg-course`
+
 ## key action
 
-| Key Pressed | Action             |
-| ----------- | ------------------ |
-| 1           | switch to light 1  |
-| 2           | switch to light 2  |
-| 3           | switch to light 3  |
-| 4           | switch to light 4  |
-| space       | stop animation     |
-| arrow up    | camera turn up     |
-| arrow down  | camera turn down   |
-| arrow right | camera turn  right |
-| arrow left  | camera turn left   |
+|    Key Pressed     | Action            |
+| :----------------: | ----------------- |
+|  <kbd>Space</kbd>  | stop animation    |
+| <kbd>&#8593;</kbd> | camera turn up    |
+| <kbd>&#8595;</kbd> | camera turn down  |
+| <kbd>&#8594;</kbd> | camera turn right |
+| <kbd>&#8592;</kbd> | camera turn left  |
